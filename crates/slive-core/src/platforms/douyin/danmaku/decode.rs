@@ -24,7 +24,7 @@ use crate::models::{
     LiveMessage, LiveMessageColor, LiveMessageData, LiveMessageEmoticon, LiveMessageType,
 };
 
-use super::emoticon::extract_emoticons;
+use super::emoticon::{extract_emoticons_with, static_emoticons, DouyinEmoticonTable};
 use super::proto::{ChatMessage, EmojiChatMessage, PushFrame, Response, RoomUserSeqMessage};
 
 /// 帧载荷类型：业务消息。
@@ -45,6 +45,16 @@ pub const METHOD_EMOJI_CHAT: &str = "WebcastEmojiChatMessage";
 ///
 /// 帧不是 `msg` 类型（`hb` / `ack`）时返回空列表（Dart 也会解出空 `messagesList`）。
 pub fn decode_frame(frame: &[u8]) -> Result<Vec<LiveMessage>, SliveError> {
+    decode_frame_with_emoticons(frame, None)
+}
+
+/// 解码一帧，并用会话注入的表情表替换正文里的标准表情码。
+///
+/// `emoticons == None` 时退回内置静态表（CLI / 测试的默认路径）。
+pub fn decode_frame_with_emoticons(
+    frame: &[u8],
+    emoticons: Option<&DouyinEmoticonTable>,
+) -> Result<Vec<LiveMessage>, SliveError> {
     let push = PushFrame::decode(frame)
         .map_err(|e| SliveError::decode(format!("PushFrame 解码失败: {e}")))?;
     if push.payload_type != PAYLOAD_TYPE_MSG || push.payload.is_empty() {
@@ -53,7 +63,7 @@ pub fn decode_frame(frame: &[u8]) -> Result<Vec<LiveMessage>, SliveError> {
     let response = decode_response(&push.payload)?;
     let mut out = Vec::with_capacity(response.messages_list.len());
     for msg in &response.messages_list {
-        if let Some(message) = decode_payload(&msg.method, &msg.payload) {
+        if let Some(message) = decode_payload(&msg.method, &msg.payload, emoticons) {
             out.push(message);
         }
     }
@@ -74,9 +84,13 @@ pub fn decode_response(payload: &[u8]) -> Result<Response, SliveError> {
 }
 
 /// 按 method 分发单条消息；未知 method -> `None`。
-fn decode_payload(method: &str, payload: &[u8]) -> Option<LiveMessage> {
+fn decode_payload(
+    method: &str,
+    payload: &[u8],
+    emoticons: Option<&DouyinEmoticonTable>,
+) -> Option<LiveMessage> {
     match method {
-        METHOD_CHAT => decode_chat(payload).ok(),
+        METHOD_CHAT => decode_chat(payload, emoticons).ok(),
         METHOD_EMOJI_CHAT => decode_emoji_chat(payload).ok(),
         METHOD_ROOM_USER_SEQ => decode_room_user_seq(payload).ok(),
         _ => None,
@@ -84,10 +98,15 @@ fn decode_payload(method: &str, payload: &[u8]) -> Option<LiveMessage> {
 }
 
 /// `WebcastChatMessage` -> 聊天消息（Dart 固定白色，注释说明颜色转换方式未知）。
-fn decode_chat(payload: &[u8]) -> Result<LiveMessage, SliveError> {
+fn decode_chat(
+    payload: &[u8],
+    table: Option<&DouyinEmoticonTable>,
+) -> Result<LiveMessage, SliveError> {
     let chat = ChatMessage::decode(payload)
         .map_err(|e| SliveError::decode(format!("ChatMessage 解码失败: {e}")))?;
-    let emoticons = extract_emoticons(&chat.content);
+    // `None`（CLI / 测试的默认路径）直接退回内置静态表，两个分支收敛成一条。
+    let emoticons =
+        extract_emoticons_with(&chat.content, table.unwrap_or_else(|| static_emoticons()));
     Ok(LiveMessage {
         message_type: LiveMessageType::Chat,
         user_name: chat
@@ -326,10 +345,7 @@ mod tests {
             .remove(0);
         assert_eq!(got.message, "哈喽[微笑][赞]", "正文保持原样，由渲染层替换");
         let emoticons = got.emoticons.expect("应带标准表情");
-        let names: Vec<&str> = emoticons
-            .iter()
-            .filter_map(|e| e.name.as_deref())
-            .collect();
+        let names: Vec<&str> = emoticons.iter().filter_map(|e| e.name.as_deref()).collect();
         assert_eq!(names, vec!["[微笑]", "[赞]"]);
         assert!(emoticons.iter().all(|e| !e.large));
         assert!(emoticons.iter().all(|e| e.url.starts_with("https://")));
@@ -521,7 +537,10 @@ mod tests {
         let back = PushFrame::decode(raw.as_slice()).expect("应能解码");
         assert_eq!(back.payload_type, "ack");
         assert_eq!(back.log_id, 123);
-        assert_eq!(String::from_utf8(back.payload).expect("utf8"), "internal-ext");
+        assert_eq!(
+            String::from_utf8(back.payload).expect("utf8"),
+            "internal-ext"
+        );
     }
 
     #[test]
@@ -546,9 +565,6 @@ mod tests {
             ..Default::default()
         }
         .encode_to_vec();
-        assert!(matches!(
-            decode_frame(&bad),
-            Err(SliveError::Decode(_))
-        ));
+        assert!(matches!(decode_frame(&bad), Err(SliveError::Decode(_))));
     }
 }

@@ -19,11 +19,14 @@ use crate::time::TimeSource;
 use crate::ws::session::{FrameSource, SessionTuning};
 
 use super::args::DouyinDanmakuArgs;
-use super::decode::{ack_frame, decode_frame, heartbeat_frame, pending_ack};
+use super::decode::{ack_frame, decode_frame_with_emoticons, heartbeat_frame, pending_ack};
+use super::emoticon::DouyinEmoticonTable;
 
 /// 连接工厂：每次（重）连创建新的帧事件源。
-pub type ConnectFactory =
-    Box<dyn FnMut() -> Pin<Box<dyn Future<Output = Result<Box<dyn FrameSource>, SliveError>> + Send>> + Send>;
+pub type ConnectFactory = Box<
+    dyn FnMut() -> Pin<Box<dyn Future<Output = Result<Box<dyn FrameSource>, SliveError>> + Send>>
+        + Send,
+>;
 
 /// 抖音默认调参（心跳 10s / 重连间隔 5s / 最多 5 次）。
 pub const DOUYIN_TUNING: SessionTuning = SessionTuning {
@@ -47,11 +50,26 @@ pub fn join_frame() -> Vec<u8> {
 /// 会 panic）—— 桥层须用独立线程 + 自建 runtime（见 `api/slive/douyin.rs`）。
 pub async fn run_session(
     _args: DouyinDanmakuArgs,
+    connect: ConnectFactory,
+    time: Arc<dyn TimeSource>,
+    stop: tokio::sync::watch::Receiver<bool>,
+    on_item: impl FnMut(LiveDanmuItem) + Send,
+) {
+    run_session_with_emoticons(_args, connect, time, stop, None, on_item).await;
+}
+
+/// 会话主循环（可注入动态表情表）。
+///
+/// `emoticons == None` 时聊天消息用内置静态表；`Some` 时用接口拉取的表。
+pub async fn run_session_with_emoticons(
+    _args: DouyinDanmakuArgs,
     mut connect: ConnectFactory,
     time: Arc<dyn TimeSource>,
     mut stop: tokio::sync::watch::Receiver<bool>,
+    emoticons: Option<DouyinEmoticonTable>,
     mut on_item: impl FnMut(LiveDanmuItem) + Send,
 ) {
+    let emoticons = emoticons.as_ref();
     let mut attempt: u32 = 0;
     'session: loop {
         if *stop.borrow_and_update() {
@@ -122,7 +140,7 @@ pub async fn run_session(
                 Err(e) => log::warn!("[douyin-danmaku] ack 解析失败: {e}"),
             }
             // 解码分发：脏帧在此被吞掉（Dart 亦以 try/catch 记日志后继续）
-            match decode_frame(&frame) {
+            match decode_frame_with_emoticons(&frame, emoticons) {
                 Ok(messages) => {
                     for message in messages {
                         on_item(LiveDanmuItem::Message(Box::new(message)));
@@ -147,9 +165,9 @@ async fn reconnect_or_close(
         )));
         true
     } else {
-        on_item(LiveDanmuItem::Control(LiveDanmuControlEvent::Reconnecting {
-            attempt: *attempt,
-        }));
+        on_item(LiveDanmuItem::Control(
+            LiveDanmuControlEvent::Reconnecting { attempt: *attempt },
+        ));
         time.sleep(DOUYIN_TUNING.reconnect_delay_secs).await;
         false
     }
@@ -164,7 +182,9 @@ mod tests {
 
     use crate::models::LiveMessageType;
     use crate::platforms::douyin::danmaku::decode::{METHOD_CHAT, PAYLOAD_TYPE_MSG};
-    use crate::platforms::douyin::danmaku::proto::{ChatMessage, Message, PushFrame, Response, User};
+    use crate::platforms::douyin::danmaku::proto::{
+        ChatMessage, Message, PushFrame, Response, User,
+    };
     use flate2::write::GzEncoder;
     use flate2::Compression;
     use prost::Message as _;
@@ -207,7 +227,10 @@ mod tests {
         )
     }
 
-    fn collector() -> (Arc<StdMutex<Vec<LiveDanmuItem>>>, impl FnMut(LiveDanmuItem) + Send) {
+    fn collector() -> (
+        Arc<StdMutex<Vec<LiveDanmuItem>>>,
+        impl FnMut(LiveDanmuItem) + Send,
+    ) {
         let items: Arc<StdMutex<Vec<LiveDanmuItem>>> = Arc::new(StdMutex::new(Vec::new()));
         let sink = Arc::clone(&items);
         (items, move |item| sink.lock().expect("sink").push(item))
@@ -224,14 +247,23 @@ mod tests {
     #[tokio::test]
     async fn ready_then_chat_message_then_reconnect_five_times() {
         let mut queue: VecDeque<Box<dyn FrameSource>> = VecDeque::new();
-        queue.push_back(Box::new(ScriptedFrameSource::new(vec![chat_frame("你好", "小明")])));
+        queue.push_back(Box::new(ScriptedFrameSource::new(vec![chat_frame(
+            "你好", "小明",
+        )])));
         let connect: ConnectFactory = Box::new(move || {
             let next = queue.pop_front();
             Box::pin(async move { next.ok_or_else(|| SliveError::network("无更多连接")) })
         });
         let (items, on_item) = collector();
         let (_stop_tx, stop_rx) = tokio::sync::watch::channel(false);
-        run_session(args(), connect, Arc::new(FakeTime::new(0)), stop_rx, on_item).await;
+        run_session(
+            args(),
+            connect,
+            Arc::new(FakeTime::new(0)),
+            stop_rx,
+            on_item,
+        )
+        .await;
 
         let got = items.lock().expect("items").clone();
         assert!(matches!(
@@ -244,7 +276,12 @@ mod tests {
         );
         let reconnects = got
             .iter()
-            .filter(|i| matches!(i, LiveDanmuItem::Control(LiveDanmuControlEvent::Reconnecting { .. })))
+            .filter(|i| {
+                matches!(
+                    i,
+                    LiveDanmuItem::Control(LiveDanmuControlEvent::Reconnecting { .. })
+                )
+            })
             .count();
         assert_eq!(reconnects, 5, "最多 5 次重连（5s×5）");
         assert!(matches!(
@@ -258,8 +295,16 @@ mod tests {
         let (items, on_item) = collector();
         // 停止信号在会话开始前就置 true：会话应立即发 Closed 且不发起任何连接
         let (_stop_tx, stop_rx) = tokio::sync::watch::channel(true);
-        let connect: ConnectFactory = Box::new(|| Box::pin(async { Err(SliveError::network("不应连接")) }));
-        run_session(args(), connect, Arc::new(FakeTime::new(0)), stop_rx, on_item).await;
+        let connect: ConnectFactory =
+            Box::new(|| Box::pin(async { Err(SliveError::network("不应连接")) }));
+        run_session(
+            args(),
+            connect,
+            Arc::new(FakeTime::new(0)),
+            stop_rx,
+            on_item,
+        )
+        .await;
         // 会话结束后 receiver 已随 `run_session` 返回而释放，再 send 必然失败 —— 预期收尾
 
         let got = items.lock().expect("items").clone();
@@ -268,6 +313,43 @@ mod tests {
             got[0],
             LiveDanmuItem::Control(LiveDanmuControlEvent::Closed(_))
         ));
+    }
+
+    #[tokio::test]
+    async fn injected_emoticon_table_replaces_chat_codes() {
+        let mut queue: VecDeque<Box<dyn FrameSource>> = VecDeque::new();
+        queue.push_back(Box::new(ScriptedFrameSource::new(vec![chat_frame(
+            "哈喽[微笑]",
+            "小明",
+        )])));
+        let connect: ConnectFactory = Box::new(move || {
+            let next = queue.pop_front();
+            Box::pin(async move { next.ok_or_else(|| SliveError::network("无更多连接")) })
+        });
+        let mut table = DouyinEmoticonTable::new();
+        table.insert("[微笑]".to_string(), "https://cdn/injected.png".to_string());
+        let (items, on_item) = collector();
+        let (_stop_tx, stop_rx) = tokio::sync::watch::channel(false);
+        run_session_with_emoticons(
+            args(),
+            connect,
+            Arc::new(FakeTime::new(0)),
+            stop_rx,
+            Some(table),
+            on_item,
+        )
+        .await;
+
+        let got = items.lock().expect("items").clone();
+        let message = got
+            .iter()
+            .find_map(|item| match item {
+                LiveDanmuItem::Message(m) if m.message_type == LiveMessageType::Chat => Some(m),
+                _ => None,
+            })
+            .expect("应收到聊天消息");
+        let emoticons = message.emoticons.as_ref().expect("应带表情");
+        assert_eq!(emoticons[0].url, "https://cdn/injected.png", "必须用注入表");
     }
 
     /// 永不回帧的事件源：把会话钉在帧循环里，逼 `stop` 分支出手。
@@ -292,7 +374,14 @@ mod tests {
         drop(stop_tx);
         let connect: ConnectFactory =
             Box::new(|| Box::pin(async { Ok(Box::new(PendingSource) as Box<dyn FrameSource>) }));
-        run_session(args(), connect, Arc::new(FakeTime::new(0)), stop_rx, on_item).await;
+        run_session(
+            args(),
+            connect,
+            Arc::new(FakeTime::new(0)),
+            stop_rx,
+            on_item,
+        )
+        .await;
 
         let got = items.lock().expect("items").clone();
         assert!(matches!(

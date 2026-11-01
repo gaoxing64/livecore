@@ -1,7 +1,7 @@
 //! 斗鱼弹幕消息解析（对照 `douyu_danmaku.dart:67-150` / `:230-247`）。
 //!
 //! 只处理 Dart 明确处理的 4 类：
-//! - `chatmsg`（**且 `if == 1`**，斗鱼用 `if` 标记「粉丝发言」，只显示粉丝弹幕）；
+//! - `chatmsg`（**仅在显式 `if == 0` 时丢弃**，见下）；
 //! - `comm_chatmsg` -> 醒目留言（SC）；
 //! - `voice_trlt` -> 高能弹幕 2（SC）；
 //! - `uenter` -> 显式忽略（Dart `else if (type != "uenter") {}` 空分支）。
@@ -15,6 +15,9 @@ use crate::models::{
     LiveMessage, LiveMessageColor, LiveMessageData, LiveMessageType, LiveSuperChatMessage,
 };
 
+use super::super::emoticon::{
+    extract_emoticons, extract_popular_danmu, static_emoticons, DouyuEmoticonTable,
+};
 use super::protocol::{deserialize, stt_to_value_with};
 
 /// SC 占位消息的固定文本（App 侧靠它识别 SC 卡片，对齐 Dart）。
@@ -28,12 +31,22 @@ const VOICE_TRLT_BG_BOTTOM: &str = "#246488";
 
 /// 解码一帧为若干条 [`LiveMessage`]（损坏帧返回空集）。
 pub fn decode_frame(data: &[u8]) -> Vec<LiveMessage> {
+    decode_frame_with_emoticons(data, static_emoticons())
+}
+
+/// 解码一帧，并用房间表情表把 `[占位符]` 还原为图片。
+pub fn decode_frame_with_emoticons(
+    data: &[u8],
+    emoticons: &DouyuEmoticonTable,
+) -> Vec<LiveMessage> {
     let Some(text) = deserialize(data) else {
         log::warn!("斗鱼弹幕帧解包失败（{} 字节）", data.len());
         return Vec::new();
     };
     let value = parse_stt(&text);
-    parse_message(&value).into_iter().collect()
+    parse_message_with_emoticons(&value, emoticons)
+        .into_iter()
+        .collect()
 }
 
 /// 需要「其后字段全部归属该容器」的 STT 键。
@@ -80,12 +93,22 @@ pub fn parse_stt(text_body: &str) -> Value {
 
 /// 解析一条 STT 消息为 [`LiveMessage`]（不关心的类型返回 `None`）。
 pub fn parse_message(value: &Value) -> Option<LiveMessage> {
+    parse_message_with_emoticons(value, static_emoticons())
+}
+
+/// 同 [`parse_message`]，但为聊天消息注入房间表情表。
+pub fn parse_message_with_emoticons(
+    value: &Value,
+    emoticons: &DouyuEmoticonTable,
+) -> Option<LiveMessage> {
     let message_type = value.get("type").and_then(Value::as_str).unwrap_or("");
     match message_type {
-        // 只显示粉丝发言（Dart: `type == "chatmsg" && fans == '1'`）
-        "chatmsg" if value.get("if").and_then(Value::as_str).unwrap_or("0") == "1" => {
-            Some(chat_message(value))
-        }
+        // `if` 是「粉丝团发言」标记，**不是**弹幕有效性的开关：实测 8 个热门房间
+        // 2 分钟内 92 条 chatmsg 中 65 条（71%）根本没有 `if` 字段，且 `if@=0`
+        // 一次都没出现。Dart 原实现把缺字段当成 `'0'` 直接丢弃，会吞掉大部分
+        // 正常弹幕（连带其中的表情）。这里只丢弃**显式** `if@=0` 的报文，
+        // 保留 Dart 规避「阴间弹幕」的意图，同时不再误伤普通观众。
+        "chatmsg" if !is_explicit_non_fan(value) => Some(chat_message(value, emoticons)),
         "comm_chatmsg" => super_chat_from_comm(value),
         "voice_trlt" => super_chat_from_voice(value),
         // uenter / 其他类型一律忽略（Dart 显式空分支）
@@ -93,20 +116,45 @@ pub fn parse_message(value: &Value) -> Option<LiveMessage> {
     }
 }
 
-fn chat_message(value: &Value) -> LiveMessage {
+/// 是否被服务端显式标记为「非粉丝团发言」（`if@=0`）。缺字段不算。
+fn is_explicit_non_fan(value: &Value) -> bool {
+    value
+        .get("if")
+        .map(crate::util::value_to_string)
+        .map(|raw| raw.trim().to_string())
+        .as_deref()
+        == Some("0")
+}
+
+fn chat_message(value: &Value, emoticons: &DouyuEmoticonTable) -> LiveMessage {
     let color_id = value
         .get("col")
         .map(crate::util::value_to_string)
         .and_then(|raw| raw.trim().parse::<i32>().ok())
         .unwrap_or(0);
+    let original = text(value, "txt");
+    let gag = text(value, "gag");
+    let popular = extract_popular_danmu(emoticons, &gag);
+    let message = if popular.is_some() {
+        // 梗弹幕的正文只是发送端占位文本，展示以 gag 对应的整张横图为准。
+        "[梗弹幕]".to_string()
+    } else {
+        original
+    };
     LiveMessage {
         message_type: LiveMessageType::Chat,
         user_name: text(value, "nn"),
         user_id: None,
-        message: text(value, "txt"),
+        emoticons: popular.map(|emoticon| vec![emoticon]).or_else(|| {
+            if message.is_empty() {
+                None
+            } else {
+                extract_emoticons(&message, emoticons)
+            }
+        }),
+        message,
         data: None,
         color: color_of(color_id),
-        emoticons: None,
     }
 }
 
@@ -267,7 +315,97 @@ mod tests {
         assert_eq!(msg.message_type, LiveMessageType::Chat);
         assert_eq!(msg.user_name, "观众");
         assert_eq!(msg.message, "加油");
+        assert!(msg.emoticons.is_none());
         assert_eq!(msg.color, LiveMessageColor::new(122, 200, 75));
+    }
+
+    #[test]
+    fn chatmsg_without_if_field_is_kept() {
+        // 线上主流形态：普通观众弹幕不带 `if` 字段，必须照常产出。
+        let value = parse_stt("type@=chatmsg/nn@=普通观众/txt@=你好/col@=1/");
+        let msg = parse_message(&value).expect("缺 if 的普通弹幕应产出消息");
+        assert_eq!(msg.message_type, LiveMessageType::Chat);
+        assert_eq!(msg.user_name, "普通观众");
+        assert_eq!(msg.message, "你好");
+    }
+
+    #[test]
+    fn live_observed_chatmsg_resolves_builtin_emoticon() {
+        // 线上真实抓包（房间 1165924）：普通观众弹幕不带 if 字段，正文含标准表情码。
+        let value = parse_stt(
+            "type@=chatmsg/rid@=1165924/uid@=1/nn@=观众/txt@=哇 6666666666[爱你]/col@=1/cst@=1793496848454/",
+        );
+        let msg = parse_message(&value).expect("线上报文应产出消息");
+        assert_eq!(msg.message, "哇 6666666666[爱你]", "正文保持原样");
+        let emoticons = msg.emoticons.expect("内置静态表应命中 [爱你]");
+        assert_eq!(emoticons.len(), 1);
+        assert_eq!(emoticons[0].name.as_deref(), Some("[爱你]"));
+        assert!(emoticons[0].url.contains("aini_"), "应解析到内置图片地址");
+        assert!(!emoticons[0].large, "标准表情是行内小表情");
+    }
+
+    #[test]
+    fn explicit_non_fan_chatmsg_is_dropped() {
+        let value = parse_stt("type@=chatmsg/nn@=观众/txt@=阴间弹幕/col@=1/if@=0/");
+        assert!(
+            parse_message(&value).is_none(),
+            "显式 if@=0 仍按 Dart 口径丢弃"
+        );
+    }
+
+    #[test]
+    fn fan_chatmsg_uses_builtin_static_emoticon_by_default() {
+        let value = parse_stt("type@=chatmsg/nn@=观众/txt@=你好[财神]/col@=1/if@=1/");
+        let msg = parse_message(&value).expect("应产出消息");
+        let emoticons = msg.emoticons.expect("内置静态表情应命中");
+        assert_eq!(emoticons.len(), 1);
+        assert_eq!(emoticons[0].name.as_deref(), Some("[财神]"));
+        assert!(emoticons[0].url.contains("caishen_"));
+        assert!(!emoticons[0].large);
+    }
+
+    #[test]
+    fn fan_chatmsg_is_enriched_with_douyu_emoticons() {
+        let value = parse_stt("type@=chatmsg/nn@=作茧很孤独/txt@=[梗亲亲]/col@=1/if@=1/");
+        let table = DouyuEmoticonTable::from([(
+            "[梗亲亲]".to_string(),
+            super::super::super::emoticon::DouyuEmoticon {
+                url: "https://cdn.example.com/kiss.png".to_string(),
+                width: Some(200),
+                height: Some(200),
+                large: true,
+            },
+        )]);
+        let msg = parse_message_with_emoticons(&value, &table).expect("粉丝发言应产出消息");
+        let emoticons = msg.emoticons.expect("应带表情");
+        assert_eq!(emoticons.len(), 1);
+        assert_eq!(emoticons[0].name.as_deref(), Some("[梗亲亲]"));
+        assert_eq!(emoticons[0].url, "https://cdn.example.com/kiss.png");
+        assert!(emoticons[0].large);
+    }
+
+    #[test]
+    fn chatmsg_gag_becomes_popular_danmu_image() {
+        let value = parse_stt("type@=chatmsg/nn@=观众/txt@=泰裤辣/gag@=197/col@=1/if@=1/");
+        let table = DouyuEmoticonTable::from([(
+            "gag:197".to_string(),
+            super::super::super::emoticon::DouyuEmoticon {
+                url: "https://cdn.example.com/taikula.png".to_string(),
+                width: Some(266),
+                height: Some(64),
+                large: true,
+            },
+        )]);
+        let msg = parse_message_with_emoticons(&value, &table).expect("应产出消息");
+        assert_eq!(msg.message, "[梗弹幕]");
+        let emoticons = msg.emoticons.expect("应带梗弹幕图片");
+        assert_eq!(emoticons.len(), 1);
+        assert_eq!(emoticons[0].name.as_deref(), Some("[梗弹幕]"));
+        assert_eq!(emoticons[0].url, "https://cdn.example.com/taikula.png");
+        assert_eq!(
+            (emoticons[0].width, emoticons[0].height),
+            (Some(266), Some(64))
+        );
     }
 
     #[test]
@@ -275,10 +413,13 @@ mod tests {
         let value = parse_stt("type@=chatmsg/nn@=路人/txt@=路过/col@=1/if@=0/");
         assert!(
             parse_message(&value).is_none(),
-            "if!=1 的非粉丝弹幕必须丢弃（Dart 只显示粉丝发言）"
+            "显式 if@=0 的报文按 Dart 口径丢弃"
         );
         let missing_if = stt_to_value("type@=chatmsg/nn@=路人/txt@=x/col@=1/");
-        assert!(parse_message(&missing_if).is_none(), "缺 if 视为非粉丝");
+        assert!(
+            parse_message(&missing_if).is_some(),
+            "缺 if 是线上主流形态，不得视为非粉丝而丢弃"
+        );
     }
 
     #[test]
@@ -332,7 +473,8 @@ mod tests {
         let value = parse_stt(
             "type@=comm_chatmsg/cprice@=100/cet@=60/now@=1700000000000/nn@=平铺/txt@=内容/ic@=face9/",
         );
-        let Some(LiveMessageData::SuperChat(sc)) = parse_message(&value).expect("应产出").data else {
+        let Some(LiveMessageData::SuperChat(sc)) = parse_message(&value).expect("应产出").data
+        else {
             panic!("data 必须是 SuperChat");
         };
         assert_eq!(sc.user_name, "平铺");
@@ -369,7 +511,10 @@ mod tests {
 
     #[test]
     fn face_url_normalizes_scheme_and_empty() {
-        assert_eq!(face_url("cdn.example.com/a.png"), "https://cdn.example.com/a.png");
+        assert_eq!(
+            face_url("cdn.example.com/a.png"),
+            "https://cdn.example.com/a.png"
+        );
         assert_eq!(
             face_url("https:cdn.example.com/a.png"),
             "https://cdn.example.com/a.png",
@@ -385,9 +530,8 @@ mod tests {
 
     #[test]
     fn decode_frame_end_to_end() {
-        let frame = super::super::protocol::serialize(
-            "type@=chatmsg/nn@=观众/txt@=你好/col@=1/if@=1/",
-        );
+        let frame =
+            super::super::protocol::serialize("type@=chatmsg/nn@=观众/txt@=你好/col@=1/if@=1/");
         let msgs = decode_frame(&frame);
         assert_eq!(msgs.len(), 1);
         assert_eq!(msgs[0].message, "你好");

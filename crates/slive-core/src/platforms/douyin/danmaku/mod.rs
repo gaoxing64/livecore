@@ -13,4 +13,4 @@ pub mod proto;
 pub mod session;
 
 pub use args::{DouyinDanmakuArgs, DOUYIN_DANMAKU_ARGS_SCHEMA_VERSION};
-pub use session::{run_session, ConnectFactory};
+pub use session::{run_session, run_session_with_emoticons, ConnectFactory};

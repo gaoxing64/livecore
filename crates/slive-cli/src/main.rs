@@ -8,8 +8,8 @@ mod url;
 use std::collections::HashMap;
 
 use slive_core::models::{LivePlayQuality, LiveRoomDetail};
-use slive_core::play::{self, RankPolicy};
 use slive_core::platforms::LiveSite;
+use slive_core::play::{self, RankPolicy};
 
 use url::{Platform, Target};
 
@@ -19,6 +19,7 @@ slive —— Simple Live 命令行工具
 用法:
   slive info <URL> [-q <清晰度>] [--all]   获取房间信息与播放直链
   slive danmaku <URL> [--no-color]         持续输出弹幕（Ctrl-C 退出）
+  slive rooms <平台> [--limit <数量>]       获取推荐直播间
   slive help                               显示本帮助
 
 支持站点:
@@ -34,12 +35,15 @@ slive —— Simple Live 命令行工具
       --top <n>         只显示优选顺序的前 n 条线路
       --url-only        只输出直链本身（每行一条，按优选顺序），便于管道
       --probe           起播前并发探测各线路首字节时延，按实测结果排序
+      --cookie-file <路径> 读取 Cookie 文件（目前用于抖音；建议只授予当前用户读取权限）
       --no-color        弹幕不输出 ANSI 颜色
+      --emoticons       弹幕后附带解析到的表情（调试用）
 
 示例:
   slive info https://live.bilibili.com/7734200
   slive info https://www.douyu.com/9999 -q 蓝光
   slive danmaku https://live.bilibili.com/6
+  slive rooms douyin --limit 20
 ";
 
 #[tokio::main]
@@ -66,7 +70,7 @@ async fn dispatch(argv: &[String]) -> Result<(), String> {
             print!("{HELP}");
             return Ok(());
         }
-        "info" | "i" | "danmaku" | "d" => {}
+        "info" | "i" | "danmaku" | "d" | "rooms" => {}
         other => return Err(format!("未知命令「{other}」")),
     }
 
@@ -77,6 +81,9 @@ async fn dispatch(argv: &[String]) -> Result<(), String> {
     let mut top: Option<usize> = None;
     let mut url_only = false;
     let mut probe = false;
+    let mut cookie_file: Option<String> = None;
+    let mut show_emoticons = false;
+    let mut limit = 20usize;
 
     let mut index = 1;
     while index < argv.len() {
@@ -97,7 +104,24 @@ async fn dispatch(argv: &[String]) -> Result<(), String> {
             }
             "--url-only" => url_only = true,
             "--probe" => probe = true,
+            "--cookie-file" => {
+                index += 1;
+                cookie_file = Some(
+                    argv.get(index)
+                        .ok_or("`--cookie-file` 缺少路径")?
+                        .to_string(),
+                );
+            }
+            "--limit" => {
+                index += 1;
+                let raw = argv.get(index).ok_or("`--limit` 缺少参数")?;
+                limit = raw.parse::<usize>().map_err(|_| "`--limit` 需要正整数")?;
+                if limit == 0 {
+                    return Err("`--limit` 需要正整数".to_string());
+                }
+            }
             "--no-color" => color = false,
+            "--emoticons" => show_emoticons = true,
             "-h" | "--help" => {
                 print!("{HELP}");
                 return Ok(());
@@ -110,13 +134,49 @@ async fn dispatch(argv: &[String]) -> Result<(), String> {
         index += 1;
     }
 
+    // `SLIVE_COOKIE_FILE` 只对抖音生效：环境变量是隐式的，若让它对 B站/斗鱼/虎牙/
+    // Twitch 也生效，用户 shell 里导出一次就会让这些平台的所有命令直接报错。
+    // 显式 `--cookie-file` 仍对非抖音报错（用户当次就能看见，属于明确用法错误）。
+    let env_cookie_file = std::env::var("SLIVE_COOKIE_FILE").ok();
+
+    if command == "rooms" {
+        return rooms(
+            positional.first().copied(),
+            limit,
+            cookie_file.as_deref(),
+            env_cookie_file.as_deref(),
+        )
+        .await;
+    }
+
     let raw = positional.first().ok_or("缺少直播间 URL")?;
     let target = url::parse(raw)?;
 
     match command {
-        "info" | "i" => info(&target, quality.as_deref(), all, top, url_only, probe).await,
+        "info" | "i" => {
+            let cookie_file = effective_cookie_file(
+                target.platform,
+                cookie_file.as_deref(),
+                env_cookie_file.as_deref(),
+            );
+            info(
+                &target,
+                quality.as_deref(),
+                all,
+                top,
+                url_only,
+                probe,
+                cookie_file,
+            )
+            .await
+        }
         _ => {
-            let site = build_site(target.platform);
+            let cookie_file = effective_cookie_file(
+                target.platform,
+                cookie_file.as_deref(),
+                env_cookie_file.as_deref(),
+            );
+            let site = build_site(target.platform, cookie_file)?;
             let detail = site
                 .get_room_detail(target.room.clone())
                 .await
@@ -126,7 +186,7 @@ async fn dispatch(argv: &[String]) -> Result<(), String> {
                 return Err("房间未开播，无法获取弹幕".to_string());
             }
             println!("\n【开始获取弹幕】（Ctrl-C 退出）");
-            danmaku::run(&target, &detail, color).await
+            danmaku::run(&target, &detail, color, show_emoticons).await
         }
     }
 }
@@ -138,8 +198,9 @@ async fn info(
     top: Option<usize>,
     url_only: bool,
     probe: bool,
+    cookie_file: Option<&str>,
 ) -> Result<(), String> {
-    let site = build_site(target.platform);
+    let site = build_site(target.platform, cookie_file)?;
     let detail = site
         .get_room_detail(target.room.clone())
         .await
@@ -182,7 +243,11 @@ async fn info(
     let picked: Vec<LivePlayQuality> = if all {
         qualities.clone()
     } else if let Some(want) = quality {
-        let exact: Vec<LivePlayQuality> = qualities.iter().filter(|item| item.quality == want).cloned().collect();
+        let exact: Vec<LivePlayQuality> = qualities
+            .iter()
+            .filter(|item| item.quality == want)
+            .cloned()
+            .collect();
         if !exact.is_empty() {
             exact
         } else {
@@ -244,8 +309,16 @@ async fn info(
             continue;
         }
 
-        let mode = if scores.is_empty() { "按优选顺序" } else { "按实测优选" };
-        println!("\n直链（{}，共 {} 条，{mode}）：", item.quality, ranked.len());
+        let mode = if scores.is_empty() {
+            "按优选顺序"
+        } else {
+            "按实测优选"
+        };
+        println!(
+            "\n直链（{}，共 {} 条，{mode}）：",
+            item.quality,
+            ranked.len()
+        );
         if shown.is_empty() {
             println!("  （无）");
         }
@@ -272,6 +345,64 @@ async fn info(
     }
 
     Ok(())
+}
+
+/// 输出推荐直播间，每行 `room_id<TAB>online<TAB>主播<TAB>标题`。
+async fn rooms(
+    platform: Option<&str>,
+    limit: usize,
+    cookie_file: Option<&str>,
+    env_cookie_file: Option<&str>,
+) -> Result<(), String> {
+    let platform = match platform
+        .unwrap_or("douyin")
+        .trim()
+        .to_ascii_lowercase()
+        .as_str()
+    {
+        "douyin" | "dy" | "抖音" => Platform::Douyin,
+        "bilibili" | "bili" | "b站" => Platform::Bilibili,
+        "douyu" | "斗鱼" => Platform::Douyu,
+        "huya" | "虎牙" => Platform::Huya,
+        "twitch" => Platform::Twitch,
+        other => {
+            return Err(format!(
+                "未知平台「{other}」（可用：douyin/bilibili/douyu/huya/twitch）"
+            ))
+        }
+    };
+    let cookie_file = effective_cookie_file(platform, cookie_file, env_cookie_file);
+    let site = build_site(platform, cookie_file)?;
+    let result = site
+        .get_recommend_rooms(1, Some(limit.min(i32::MAX as usize) as i32))
+        .await
+        .map_err(|e| e.to_string())?;
+    for room in result.items.into_iter().take(limit) {
+        println!(
+            "{}\t{}\t{}\t{}",
+            room.room_id,
+            room.online,
+            room.user_name.replace(['\t', '\r', '\n'], " "),
+            room.title.replace(['\t', '\r', '\n'], " ")
+        );
+    }
+    Ok(())
+}
+
+/// 合并显式 `--cookie-file` 与环境变量 `SLIVE_COOKIE_FILE`。
+///
+/// 环境变量只在抖音上生效：它是隐式的，不该让非抖音平台的命令因为用户
+/// shell 里导出了这个变量而失败。显式参数保持原样（非抖音 -> `build_site` 报错）。
+fn effective_cookie_file<'a>(
+    platform: Platform,
+    explicit: Option<&'a str>,
+    from_env: Option<&'a str>,
+) -> Option<&'a str> {
+    explicit.or(if platform == Platform::Douyin {
+        from_env
+    } else {
+        None
+    })
 }
 
 /// 按 `origin_index` 找对应探测成绩（`scores` 与 `lines` 同序）。
@@ -322,7 +453,14 @@ fn print_detail(site: &dyn LiveSite, detail: &LiveRoomDetail) {
     println!("房间标题：{}", detail.title);
     println!("直播用户：{}", detail.user_name);
     println!("人气值：{}", detail.online);
-    println!("状态：{}", if detail.status { "直播中" } else { "未开播" });
+    println!(
+        "状态：{}",
+        if detail.status {
+            "直播中"
+        } else {
+            "未开播"
+        }
+    );
 }
 
 fn print_headers(headers: &Option<HashMap<String, String>>) {
@@ -348,8 +486,20 @@ fn print_headers_to(headers: &Option<HashMap<String, String>>, to_stderr: bool) 
     }
 }
 
-fn build_site(platform: Platform) -> Box<dyn LiveSite> {
-    slive_core::platforms::create_site(to_core_platform(platform))
+fn build_site(platform: Platform, cookie_file: Option<&str>) -> Result<Box<dyn LiveSite>, String> {
+    let site = slive_core::platforms::create_site(to_core_platform(platform));
+    let Some(path) = cookie_file else {
+        return Ok(site);
+    };
+    if platform != Platform::Douyin {
+        return Err("`--cookie-file` 目前只支持抖音".to_string());
+    }
+    let cookie = std::fs::read_to_string(path)
+        .map_err(|e| format!("读取 Cookie 文件失败「{path}」：{e}"))?;
+    let attrs = serde_json::json!({ "cookie": cookie.trim() }).to_string();
+    site.set_site_attrs(&attrs)
+        .map_err(|e| format!("注入抖音 Cookie 失败：{e}"))?;
+    Ok(site)
 }
 
 /// CLI 的 `Platform`（URL 主机名解析专用）→ core 的 `Platform`（C ABI 稳定判别值）。

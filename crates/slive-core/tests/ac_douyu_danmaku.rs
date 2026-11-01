@@ -94,28 +94,25 @@ fn client_joingroup_frame_matches_golden() {
     assert_eq!(serialize(body), fixture_bytes("req-joingroup"));
 }
 
-/// 入站帧：粉丝发言（`if=1`）产出 1 条聊天消息，颜色按 col 映射。
+/// 入站帧：缺 `if` 字段的普通弹幕必须正常产出。
 ///
-/// ⚠️ **夹具缺陷（已回传QA）**：`frame-chatmsg-fans1.bin` 的 STT 载荷里**没有 `if` 字段**
-/// （`type@=chatmsg/nn@=观众A/txt@=你好世界/col@=3/`），但它的 `expected` 却要求产出 1 条消息，
-/// 且 note 写明「type=chatmsg 且 if='1'（fans）才产出」。按 Dart
-/// （`fans = jsonData["if"] ?? '0'` -> `'0'` -> 非粉丝 -> 丢弃）**该帧必须无产出**。
-/// 故此处分两段断言：① 现存夹具按 Dart 口径丢弃；② 按 note 的意图补一个带 `if@=1` 的帧，
-/// 断言值取自夹具的 `expected`，等QA 修正夹具 后两段自然合并。
+/// `if` 是「粉丝团发言」标记而非有效性开关：线上实测 71% 的正常 chatmsg 不带该字段。
+/// 夹具 `frame-chatmsg-fans1.bin` 的载荷本就没有 `if`，其 `expected` 也要求产出 1 条 ——
+/// 本用例把「缺字段」这一主流形态钉死，防止再退回按 `if==1` 过滤。
 #[test]
-fn fan_chatmsg_shipped_fixture_is_dropped_because_if_field_is_absent() {
+fn chatmsg_without_if_field_is_kept() {
     assert_hex_matches_json("frame-chatmsg-fans1");
     let body = std::str::from_utf8(&fixture_bytes("frame-chatmsg-fans1")[12..])
         .expect("载荷是 UTF-8")
         .to_string();
-    assert!(
-        !body.contains("if@="),
-        "夹具现状：载荷缺 if 字段（若QA 已修正，本用例需同步改写）"
-    );
-    assert!(
-        decode_frame(&fixture_bytes("frame-chatmsg-fans1")).is_empty(),
-        "缺 if -> 视为非粉丝 -> 必须丢弃（对齐 Dart douyu_danmaku.dart:76-81）"
-    );
+    assert!(!body.contains("if@="), "夹具现状：载荷缺 if 字段");
+
+    let expected = fixture_json("frame-chatmsg-fans1");
+    let want = &expected["expected"]["messages"][0];
+    let messages = decode_frame(&fixture_bytes("frame-chatmsg-fans1"));
+    assert_eq!(messages.len(), 1, "缺 if 的普通弹幕不得被丢弃");
+    assert_eq!(messages[0].user_name, want["user_name"].as_str().unwrap());
+    assert_eq!(messages[0].message, want["message"].as_str().unwrap());
 }
 
 #[test]
@@ -135,7 +132,7 @@ fn fan_chatmsg_with_if_field_yields_chat_message() {
     assert_eq!(got.color.b, want["color"]["b"].as_i64().unwrap() as i32);
 }
 
-/// 入站帧：非粉丝发言（`if=0`）**必须无产出且不抛**（Dart 只显示粉丝发言）。
+/// 入站帧：显式 `if=0`（服务端标记为非粉丝团）仍按 Dart 口径丢弃。
 #[test]
 fn non_fan_chatmsg_frame_is_dropped() {
     assert_hex_matches_json("frame-chatmsg-fans0");
@@ -205,7 +202,8 @@ fn voice_trlt_frame_yields_super_chat() {
     assert_eq!(message, want["message"].as_str().unwrap());
     assert_eq!(price, want["price"].as_i64().unwrap() as i32);
     assert_eq!(
-        start_ms, want["start_time_ms"].as_i64().unwrap(),
+        start_ms,
+        want["start_time_ms"].as_i64().unwrap(),
         "acptime(秒) 必须换算为毫秒"
     );
     assert_eq!(end_ms, want["end_time_ms"].as_i64().unwrap());

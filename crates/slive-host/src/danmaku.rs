@@ -63,14 +63,31 @@ fn spawn_douyu(
     on_item: impl FnMut(LiveDanmuItem) + Send + 'static,
 ) -> Result<(), SliveError> {
     use slive_core::platforms::douyu::danmaku::args::DouyuDanmakuArgs;
-    use slive_core::platforms::douyu::danmaku::session::{douyu_tuning, run_session};
+    use slive_core::platforms::douyu::danmaku::session::{
+        douyu_tuning, run_session_with_emoticons,
+    };
+    use slive_core::platforms::douyu::emoticon;
+    use slive_core::platforms::douyu::DouyuSite;
 
     // 斗鱼弹幕入参就是房间号本身（非 JSON）；空房间号 → InvalidInput。
     let args = DouyuDanmakuArgs::new(room_id)?;
     // 明文 TCP（ADR-015），不走 WS/TLS。
     let connect = crate::tcp::factory(args.connect_url());
+    let room_id = args.room_id.clone();
+    let site = Arc::new(DouyuSite::new());
     runtime::spawn_session("slive-douyu-danmaku", async move {
-        run_session(args, connect, Arc::new(SystemClock), douyu_tuning(), stop, on_item).await;
+        // 表情/梗弹幕表按房间拉取；失败只回退为空表，不阻断弹幕主链路。
+        let emoticons = emoticon::fetch(site.http(), &room_id).await;
+        run_session_with_emoticons(
+            args,
+            connect,
+            Arc::new(SystemClock),
+            douyu_tuning(),
+            stop,
+            emoticons,
+            on_item,
+        )
+        .await;
     });
     Ok(())
 }
@@ -83,7 +100,9 @@ fn spawn_huya(
     use slive_core::http::DEFAULT_USER_AGENT;
     use slive_core::platforms::huya::common::{BASE_URL, WS_SERVER_URL};
     use slive_core::platforms::huya::danmaku::emoticon::HuyaEmoticonTable;
-    use slive_core::platforms::huya::danmaku::{run_session_with_emoticons, HuyaDanmakuArgs, SuperChatFetcher};
+    use slive_core::platforms::huya::danmaku::{
+        run_session_with_emoticons, HuyaDanmakuArgs, SuperChatFetcher,
+    };
     use slive_core::platforms::huya::{super_chat, tup, HuyaSite};
 
     let args = HuyaDanmakuArgs::from_json(args_json)?;
@@ -141,24 +160,39 @@ fn spawn_douyin(
     on_item: impl FnMut(LiveDanmuItem) + Send + 'static,
 ) -> Result<(), SliveError> {
     use slive_core::platforms::douyin::danmaku::args::{SDK_VERSION, VERSION_CODE};
-    use slive_core::platforms::douyin::danmaku::session::run_session;
+    use slive_core::platforms::douyin::danmaku::emoticon;
+    use slive_core::platforms::douyin::danmaku::session::run_session_with_emoticons;
     use slive_core::platforms::douyin::danmaku::DouyinDanmakuArgs;
     use slive_core::platforms::douyin::signing::build_ws_signature;
+    use slive_core::platforms::douyin::DouyinSite;
 
     let args = DouyinDanmakuArgs::from_json(args_json)?;
 
     // 签名必须在起线程前算好：失败直接返回给调用方（否则错误被吞进无人观察的线程，
     // 表现为「直播了但连不上」且无任何提示）。
     let signature = build_ws_signature(&args.room_id, &args.user_id, VERSION_CODE, SDK_VERSION)?;
-    let ts_millis = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_millis() as u64)
-        .unwrap_or_default();
-    let ws_url = args.ws_url(args.primary_host(), ts_millis, &signature);
-    let connect = ws::binary_factory(ws_url, args.connect_headers());
+    let site = Arc::new(DouyinSite::new());
 
     runtime::spawn_session("slive-douyin-danmaku", async move {
-        run_session(args, connect, Arc::new(SystemClock), stop, on_item).await;
+        // 标准表情表走公开接口，签名 URL 会随平台刷新；失败时 core 内部回退静态表。
+        let emoticons = emoticon::fetch(site.http()).await;
+        // 握手 URL 的 `cursor` 内嵌毫秒时间戳，必须在表情表拉完之后才取样：
+        // 否则最坏会带着 8 秒前的时间戳建连（表情表是可选增强，不该拖累握手时效）。
+        let ts_millis = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis() as u64)
+            .unwrap_or_default();
+        let ws_url = args.ws_url(args.primary_host(), ts_millis, &signature);
+        let connect = ws::binary_factory(ws_url, args.connect_headers());
+        run_session_with_emoticons(
+            args,
+            connect,
+            Arc::new(SystemClock),
+            stop,
+            Some(emoticons),
+            on_item,
+        )
+        .await;
     });
     Ok(())
 }
@@ -174,14 +208,24 @@ fn spawn_twitch(
     // IRC over WS：文本帧（TextFrames），Binary 帧也照收。
     let connect = ws::text_factory(args.ws_url(), args.connect_headers());
     runtime::spawn_session("slive-twitch-danmaku", async move {
-        run_session(args, connect, Arc::new(SystemClock), tuning(), stop, on_item).await;
+        run_session(
+            args,
+            connect,
+            Arc::new(SystemClock),
+            tuning(),
+            stop,
+            on_item,
+        )
+        .await;
     });
     Ok(())
 }
 
 /// Twitch `danmakuData` 双形态：裸频道名（主形态，QA 夹具钉死 `"alice"`）或 JSON 契约串。
 /// 两者都不成立 → `InvalidInput`（不静默兜底）。
-fn parse_twitch_args(input: &str) -> Result<slive_core::platforms::twitch::danmaku::TwitchDanmakuArgs, SliveError> {
+fn parse_twitch_args(
+    input: &str,
+) -> Result<slive_core::platforms::twitch::danmaku::TwitchDanmakuArgs, SliveError> {
     use slive_core::platforms::twitch::danmaku::TwitchDanmakuArgs;
     let trimmed = input.trim();
     if !trimmed.is_empty() && !trimmed.starts_with('{') {

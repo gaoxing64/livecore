@@ -5,7 +5,9 @@
 
 use std::sync::Arc;
 
-use slive_core::models::{LiveDanmuControlEvent, LiveDanmuItem, LiveMessageData, LiveMessageType, LiveRoomDetail};
+use slive_core::models::{
+    LiveDanmuControlEvent, LiveDanmuItem, LiveMessageData, LiveMessageType, LiveRoomDetail,
+};
 use slive_core::time::SystemClock;
 use slive_core::ws::SessionTuning;
 use tokio::sync::watch;
@@ -13,7 +15,12 @@ use tokio::sync::watch;
 use crate::url::{Platform, Target};
 
 /// 启动弹幕会话并阻塞到会话结束（Ctrl-C 触发优雅停止）。
-pub async fn run(target: &Target, detail: &LiveRoomDetail, color: bool) -> Result<(), String> {
+pub async fn run(
+    target: &Target,
+    detail: &LiveRoomDetail,
+    color: bool,
+    show_emoticons: bool,
+) -> Result<(), String> {
     let (stop_tx, stop_rx) = watch::channel(false);
 
     tokio::spawn(async move {
@@ -25,23 +32,23 @@ pub async fn run(target: &Target, detail: &LiveRoomDetail, color: bool) -> Resul
 
     match target.platform {
         Platform::Bilibili => {
-            let on_item = move |item: LiveDanmuItem| print_item(&item, color);
+            let on_item = move |item: LiveDanmuItem| print_item(&item, color, show_emoticons);
             run_bilibili(detail, stop_rx, on_item).await
         }
         Platform::Douyu => {
-            let on_item = move |item: LiveDanmuItem| print_item(&item, color);
+            let on_item = move |item: LiveDanmuItem| print_item(&item, color, show_emoticons);
             run_douyu(detail, stop_rx, on_item).await
         }
         Platform::Huya => {
-            let on_item = move |item: LiveDanmuItem| print_item(&item, color);
+            let on_item = move |item: LiveDanmuItem| print_item(&item, color, show_emoticons);
             run_huya(detail, stop_rx, on_item).await
         }
         Platform::Douyin => {
-            let on_item = move |item: LiveDanmuItem| print_item(&item, color);
+            let on_item = move |item: LiveDanmuItem| print_item(&item, color, show_emoticons);
             run_douyin(detail, stop_rx, on_item).await
         }
         Platform::Twitch => {
-            let on_item = move |item: LiveDanmuItem| print_item(&item, color);
+            let on_item = move |item: LiveDanmuItem| print_item(&item, color, show_emoticons);
             run_twitch(detail, stop_rx, on_item).await
         }
     }
@@ -76,14 +83,29 @@ async fn run_douyu(
     on_item: impl FnMut(LiveDanmuItem) + Send,
 ) -> Result<(), String> {
     use slive_core::platforms::douyu::danmaku::args::DouyuDanmakuArgs;
-    use slive_core::platforms::douyu::danmaku::session::{douyu_tuning, run_session};
+    use slive_core::platforms::douyu::danmaku::session::{
+        douyu_tuning, run_session_with_emoticons,
+    };
+    use slive_core::platforms::douyu::emoticon;
+    use slive_core::platforms::douyu::DouyuSite;
 
     // 斗鱼只需房间号即可建会话（与 Dart console 一致），不依赖 danmaku_data。
     // 传输为明文 TCP（ADR-015），不再走 WSS/TLS。
     let args = DouyuDanmakuArgs::new(&detail.room_id).map_err(|e| e.to_string())?;
     let connect = slive_host::tcp::factory(args.connect_url());
 
-    run_session(args, connect, Arc::new(SystemClock), douyu_tuning(), stop_rx, on_item).await;
+    let site = DouyuSite::new();
+    let emoticons = emoticon::fetch(site.http(), &detail.room_id).await;
+    run_session_with_emoticons(
+        args,
+        connect,
+        Arc::new(SystemClock),
+        douyu_tuning(),
+        stop_rx,
+        emoticons,
+        on_item,
+    )
+    .await;
     Ok(())
 }
 
@@ -124,24 +146,37 @@ async fn run_douyin(
     on_item: impl FnMut(LiveDanmuItem) + Send,
 ) -> Result<(), String> {
     use slive_core::platforms::douyin::danmaku::args::{SDK_VERSION, VERSION_CODE};
-    use slive_core::platforms::douyin::danmaku::session::run_session;
+    use slive_core::platforms::douyin::danmaku::emoticon;
+    use slive_core::platforms::douyin::danmaku::session::run_session_with_emoticons;
     use slive_core::platforms::douyin::danmaku::DouyinDanmakuArgs;
     use slive_core::platforms::douyin::signing::build_ws_signature;
+    use slive_core::platforms::douyin::DouyinSite;
 
     let json = danmaku_json(detail, "抖音")?;
     let args = DouyinDanmakuArgs::from_json(json).map_err(|e| e.to_string())?;
 
     // 握手 URL 含 x_bogus 签名：签名失败属入参非法，必须在建连前报出来。
-    let signature =
-        build_ws_signature(&args.room_id, &args.user_id, VERSION_CODE, SDK_VERSION).map_err(|e| e.to_string())?;
+    let signature = build_ws_signature(&args.room_id, &args.user_id, VERSION_CODE, SDK_VERSION)
+        .map_err(|e| e.to_string())?;
+
+    // 标准表情表走公开接口，失败时 core 内部回退静态表，不影响弹幕主链路。
+    let emoticons = emoticon::fetch(DouyinSite::new().http()).await;
+    // 握手 URL 的 `cursor` 内嵌毫秒时间戳，必须在表情表拉完之后才取样。
     let ts_millis = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_millis() as u64)
         .unwrap_or_default();
     let url = args.ws_url(args.primary_host(), ts_millis, &signature);
     let connect = slive_host::ws::binary_factory(url, args.connect_headers());
-
-    run_session(args, connect, Arc::new(SystemClock), stop_rx, on_item).await;
+    run_session_with_emoticons(
+        args,
+        connect,
+        Arc::new(SystemClock),
+        stop_rx,
+        Some(emoticons),
+        on_item,
+    )
+    .await;
     Ok(())
 }
 
@@ -157,7 +192,15 @@ async fn run_twitch(
     let args = TwitchDanmakuArgs::new(&detail.room_id);
     let connect = slive_host::ws::text_factory(args.ws_url(), args.connect_headers());
 
-    run_session(args, connect, Arc::new(SystemClock), tuning(), stop_rx, on_item).await;
+    run_session(
+        args,
+        connect,
+        Arc::new(SystemClock),
+        tuning(),
+        stop_rx,
+        on_item,
+    )
+    .await;
     Ok(())
 }
 
@@ -168,7 +211,7 @@ fn danmaku_json<'a>(detail: &'a LiveRoomDetail, platform: &str) -> Result<&'a st
         .ok_or_else(|| format!("{platform}未下发弹幕参数（房间可能未开播）"))
 }
 
-fn print_item(item: &LiveDanmuItem, color: bool) {
+fn print_item(item: &LiveDanmuItem, color: bool, show_emoticons: bool) {
     match item {
         LiveDanmuItem::Control(event) => match event {
             LiveDanmuControlEvent::Ready => eprintln!("[已连接]"),
@@ -179,7 +222,28 @@ fn print_item(item: &LiveDanmuItem, color: bool) {
         },
         LiveDanmuItem::Message(msg) => match msg.message_type {
             LiveMessageType::Chat => {
-                println!("{}：{}", paint(&msg.user_name, msg.color, color), msg.message)
+                println!(
+                    "{}：{}",
+                    paint(&msg.user_name, msg.color, color),
+                    msg.message
+                );
+                if show_emoticons {
+                    if let Some(emoticons) = &msg.emoticons {
+                        let detail = emoticons
+                            .iter()
+                            .map(|e| {
+                                format!(
+                                    "{} -> {}{}",
+                                    e.name.as_deref().unwrap_or("<无占位符>"),
+                                    e.url,
+                                    if e.large { " (大表情)" } else { "" }
+                                )
+                            })
+                            .collect::<Vec<_>>()
+                            .join(" | ");
+                        println!("    [表情] {detail}");
+                    }
+                }
             }
             LiveMessageType::Online => {
                 if let Some(LiveMessageData::Online(online)) = &msg.data {
@@ -200,5 +264,8 @@ fn paint(text: &str, color: slive_core::models::LiveMessageColor, enabled: bool)
     if !enabled {
         return text.to_string();
     }
-    format!("\x1b[38;2;{};{};{}m{text}\x1b[0m", color.r, color.g, color.b)
+    format!(
+        "\x1b[38;2;{};{};{}m{text}\x1b[0m",
+        color.r, color.g, color.b
+    )
 }

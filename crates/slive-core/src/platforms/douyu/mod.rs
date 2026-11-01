@@ -10,6 +10,7 @@ pub mod categories;
 pub mod cookie;
 pub mod danmaku;
 pub mod detail;
+pub mod emoticon;
 pub mod header;
 pub mod play;
 pub mod rooms;

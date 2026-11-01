@@ -40,10 +40,14 @@ cd simple_live_core
 cargo build -p slive-cli --release
 ./target/release/slive info    https://live.bilibili.com/7734200
 ./target/release/slive danmaku https://live.bilibili.com/6
+./target/release/slive rooms   douyin --limit 20
+./target/release/slive info    https://live.douyin.com/80126552431 --cookie-file /path/to/douyin.cookie
 ./target/release/slive help
 ```
 
-`info` 输出房间详情、全部清晰度与直链（含请求头）；`danmaku` 持续打印弹幕，Ctrl-C 退出。
+`info` 输出房间详情、全部清晰度与直链（含请求头）；`danmaku` 持续打印弹幕，Ctrl-C 退出；
+`rooms` 输出推荐房间。`--cookie-file` 目前用于抖音，文件内容只作为 Cookie 请求头注入，
+不会写入日志。也可通过环境变量 `SLIVE_COOKIE_FILE` 传入路径，避免 Cookie 出现在进程参数中。
 
 ## 重跑 codegen
 

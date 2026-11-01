@@ -2,7 +2,8 @@
 //!
 //! 设计要点（见 `docs/rust-core/10-architecture.md §6.2 / §8.1`）：
 //! - 复用单个 `reqwest::Client`（连接池 / keep-alive），差异化请求头按请求携带；
-//! - 统一 rustls（纯 Rust），`.http1_only()` + `.no_proxy()` + 连接/请求超时；
+//! - 统一 rustls（纯 Rust），`.http1_only()` + 连接/请求超时；默认 `.no_proxy()`，
+//!   仅在显式设置 `SLIVE_PROXY_URL` 时启用该代理（Clash/TUN 的 fake-IP 环境需要）；
 //! - **不对业务错误码自动重试**（AC-25）；传输层亦不重试（保持与 Dart core 同路径的请求数）。
 
 use std::time::Duration;
@@ -89,13 +90,18 @@ pub struct ReqwestTransport {
 
 /// 构造共享 `reqwest::Client`（ADR-003 / §6.2）。
 pub fn build_client() -> reqwest::Client {
-    reqwest::Client::builder()
+    let mut builder = reqwest::Client::builder()
         .http1_only()
-        .no_proxy()
         .connect_timeout(CONNECT_TIMEOUT)
-        .timeout(REQUEST_TIMEOUT)
-        .build()
-        .unwrap_or_default()
+        .timeout(REQUEST_TIMEOUT);
+    match std::env::var("SLIVE_PROXY_URL") {
+        Ok(raw) if !raw.trim().is_empty() => match reqwest::Proxy::all(raw.trim()) {
+            Ok(proxy) => builder = builder.proxy(proxy),
+            Err(e) => log::warn!("忽略非法 SLIVE_PROXY_URL: {e}"),
+        },
+        _ => builder = builder.no_proxy(),
+    }
+    builder.build().unwrap_or_default()
 }
 
 impl ReqwestTransport {

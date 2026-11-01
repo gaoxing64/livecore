@@ -17,4 +17,4 @@ pub mod session;
 pub use args::DouyuDanmakuArgs;
 pub use parse::decode_frame;
 pub use protocol::{deserialize, serialize, stt_to_value};
-pub use session::{douyu_tuning, run_session};
+pub use session::{douyu_tuning, run_session, run_session_with_emoticons};

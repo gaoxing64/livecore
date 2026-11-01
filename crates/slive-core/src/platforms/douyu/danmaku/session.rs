@@ -20,7 +20,8 @@ use crate::ws::{ConnectFactory, FrameSource, SessionTuning};
 pub type DouyuFrameSource = Box<dyn FrameSource>;
 
 use super::args::{DouyuDanmakuArgs, HEARTBEAT_SECS, MAX_RECONNECT, RECONNECT_DELAY_SECS};
-use super::parse::decode_frame;
+use super::super::emoticon::{static_table, DouyuEmoticonTable};
+use super::parse::decode_frame_with_emoticons;
 use super::protocol::{heartbeat_payload, join_payload, login_payload, serialize};
 
 /// 斗鱼默认调参（45s 心跳 / 5s 重连 / 5 次）。
@@ -45,16 +46,31 @@ pub fn heartbeat_frame() -> Vec<u8> {
     serialize(&heartbeat_payload())
 }
 
-/// 会话主循环。`on_item` 依次收到 `Ready` / `Message` / `Reconnecting` / `Closed`。
+/// 会话主循环（内置静态表情表）。语义见 [`run_session_with_emoticons`]。
+pub async fn run_session(
+    args: DouyuDanmakuArgs,
+    connect: ConnectFactory,
+    time: Arc<dyn TimeSource>,
+    tuning: SessionTuning,
+    stop: tokio::sync::watch::Receiver<bool>,
+    on_item: impl FnMut(LiveDanmuItem) + Send,
+) {
+    run_session_with_emoticons(args, connect, time, tuning, stop, static_table(), on_item).await;
+}
+
+/// 会话主循环（可注入房间表情/梗弹幕表）。`on_item` 依次收到 `Ready` / `Message` / `Reconnecting` / `Closed`。
 ///
+/// `emoticons` 为房间维度的 `[占位符] -> 表情` 表（`emoticon::fetch` 拉取，
+/// 失败时已回退内置静态表），聊天帧用它把占位符还原为图片。
 /// `stop` 置 `true` 即手动停止：发出 `Closed("已手动停止")` 后返回，不再重连。
 /// 发送端全部 drop（连接句柄释放）同样视为停止（否则 `changed()` 会热循环返回 Err）。
-pub async fn run_session(
+pub async fn run_session_with_emoticons(
     args: DouyuDanmakuArgs,
     mut connect: ConnectFactory,
     time: Arc<dyn TimeSource>,
     tuning: SessionTuning,
     mut stop: tokio::sync::watch::Receiver<bool>,
+    emoticons: DouyuEmoticonTable,
     mut on_item: impl FnMut(LiveDanmuItem) + Send,
 ) {
     let mut attempt: u32 = 0;
@@ -128,7 +144,7 @@ pub async fn run_session(
             {
                 last_heartbeat = time.unix_secs();
             }
-            for message in decode_frame(&frame) {
+            for message in decode_frame_with_emoticons(&frame, &emoticons) {
                 on_item(LiveDanmuItem::Message(Box::new(message)));
             }
         }

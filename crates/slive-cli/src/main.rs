@@ -487,7 +487,7 @@ fn print_headers_to(headers: &Option<HashMap<String, String>>, to_stderr: bool) 
 }
 
 fn build_site(platform: Platform, cookie_file: Option<&str>) -> Result<Box<dyn LiveSite>, String> {
-    let site = slive_core::platforms::create_site(to_core_platform(platform));
+    let site = slive_core::platforms::create_site(platform);
     let Some(path) = cookie_file else {
         return Ok(site);
     };
@@ -500,15 +500,4 @@ fn build_site(platform: Platform, cookie_file: Option<&str>) -> Result<Box<dyn L
     site.set_site_attrs(&attrs)
         .map_err(|e| format!("注入抖音 Cookie 失败：{e}"))?;
     Ok(site)
-}
-
-/// CLI 的 `Platform`（URL 主机名解析专用）→ core 的 `Platform`（C ABI 稳定判别值）。
-fn to_core_platform(p: Platform) -> slive_core::platforms::Platform {
-    match p {
-        Platform::Bilibili => slive_core::platforms::Platform::Bilibili,
-        Platform::Douyu => slive_core::platforms::Platform::Douyu,
-        Platform::Huya => slive_core::platforms::Platform::Huya,
-        Platform::Douyin => slive_core::platforms::Platform::Douyin,
-        Platform::Twitch => slive_core::platforms::Platform::Twitch,
-    }
 }

@@ -3,29 +3,8 @@
 //! 只认主播页地址，不做短链跳转（与已被删除的 Dart `simple_live_console` 同一口径）。
 //! 接受带 scheme 或裸域名两种写法：`live.bilibili.com/7734200` / `https://live.bilibili.com/7734200`。
 
-/// 支持的平台。
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Platform {
-    Bilibili,
-    Douyu,
-    Huya,
-    Douyin,
-    Twitch,
-}
-
-impl Platform {
-    /// 站点显示名（与 core 各 `*Site::name()` 的返回值一致；供错误提示使用）。
-    #[allow(dead_code)]
-    pub fn name(self) -> &'static str {
-        match self {
-            Platform::Bilibili => "哔哩哔哩直播",
-            Platform::Douyu => "斗鱼直播",
-            Platform::Huya => "虎牙直播",
-            Platform::Douyin => "抖音直播",
-            Platform::Twitch => "Twitch",
-        }
-    }
-}
+/// 支持的平台（直接复用 core 的枚举，消除重复定义）。
+pub use slive_core::platforms::Platform;
 
 /// 解析结果。
 #[derive(Debug, Clone, PartialEq, Eq)]

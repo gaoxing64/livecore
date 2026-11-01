@@ -2,7 +2,7 @@
 //!
 //! 纪律（AC-39 / 裁决 J-6 / R-13）：本层**只做类型翻译与转发**，零协议逻辑 ——
 //! 不得出现 URL 拼接 / a_bogus 签名 / protobuf 编解码 / 重连；一切协议能力在
-//! `slive-core`（Rust）。回退窗口已结束（ADR-008）：`sites.dart` 直连本绑定层。
+//! `slive-core`（Rust）。回退窗口已结束：`sites.dart` 直连本绑定层。
 //!
 //! 与 `RustBilibiliSite` 的三处差异：
 //! 1. `getDanmaku()` 返回抖音专属适配器（protobuf over WS 的参数契约键名不同）；
@@ -198,7 +198,7 @@ class RustDouyinDanmaku extends LiveDanmaku {
   @override
   Future<void> start(dynamic args) async {
     // `args` 只接受 `detail.danmakuData` 原样透传的 JSON 串（Rust 契约）。
-    // Dart 侧已无 `DouyinDanmakuArgs` 类型（ADR-014 删除 Dart core 实现）。
+    // Dart 侧已无 `DouyinDanmakuArgs` 类型（Dart core 实现已删除）。
     final argsJson = args is String
         ? args
         : throw ArgumentError(

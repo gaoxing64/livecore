@@ -1,6 +1,6 @@
 //! Simple Live C ABI。
 //!
-//! 设计要点（ADR-016）：
+//! 设计要点：
 //! - 句柄是 `u64` 而非裸指针 —— 悬垂使用返回 `INVALID_HANDLE`，不是 UB；
 //! - 回调在**专用 dispatcher 线程**串行触发，宿主只需 marshal 一次到 UI 线程；
 //! - 每个 `extern "C"` 函数体都包 `catch_unwind`（unwinding 跨 FFI 是 UB）；

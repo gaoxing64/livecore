@@ -7,7 +7,7 @@
 //! - 生产：[`ReqwestTwitchPost`]（复用 `crate::http::build_client` 的共享 rustls Client 口径）
 //! - 测试：[`MockTwitchPost`]（按 URL 子串返回夹具 + 记录请求，供离线用例断言）
 //!
-//! 纪律：**不自动重试**（`docs/rust-core/13-spec.md` §9）；业务错误由上层判定并抛错。
+//! 纪律：**不自动重试**；业务错误由上层判定并抛错。
 
 use std::sync::Mutex;
 

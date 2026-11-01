@@ -1,4 +1,4 @@
-//! 弹幕参数数据契约（`docs/rust-core/10-architecture.md §3.3(b)`）。
+//! 弹幕参数数据契约。
 //!
 //! `LiveRoomDetail.danmaku_data` 承载本结构的 JSON 串（键名 snake_case、顺序稳定）。
 //! 契约要点：`schema_version` 固定 `1`；缺字段/非法 JSON/版本不符 -> [`SliveError::Decode`]。

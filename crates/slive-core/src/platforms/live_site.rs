@@ -1,5 +1,5 @@
 //! 统一站点门面：五个平台的 `*Site` 有同构方法集，这里收敛为单 trait + 工厂，
-//! 供 CLI / FRB 桥 / C ABI 复用（ADR-008：只转发，零协议逻辑）。
+//! 供 CLI / FRB 桥 / C ABI 复用（只转发，零协议逻辑）。
 
 use async_trait::async_trait;
 
@@ -47,7 +47,7 @@ impl Platform {
 
 /// 五平台站点的统一视图。
 ///
-/// 只做转发，零协议逻辑（ADR-008）。平台特有方法（虎牙子分类、斗鱼 Cookie 刷新）
+/// 只做转发，零协议逻辑。平台特有方法（虎牙子分类、斗鱼 Cookie 刷新）
 /// 仍留在各具体类型上，不进本 trait —— 保证对象安全与工厂返回类型稳定。
 #[async_trait]
 pub trait LiveSite: Send + Sync {

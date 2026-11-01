@@ -2,7 +2,7 @@
 //!
 //! 纪律（AC-39 / 裁决 J-6 / R-13）：本层**只做类型翻译与转发**，零协议逻辑 ——
 //! 不得出现 URL 拼接 / 签名 / 解析 / 重试；一切协议能力在 `slive-core`（Rust）。
-//! 回退窗口已结束（ADR-008）：`sites.dart` 直连本绑定层，无运行时开关；
+//! 回退窗口已结束：`sites.dart` 直连本绑定层，无运行时开关；
 //! Dart core 的 B站实现待 console 迁移后删除（console 暂留 Dart 路径）。
 
 import 'dart:async';
@@ -152,7 +152,7 @@ class RustLiveDanmaku extends LiveDanmaku {
   @override
   Future<void> start(dynamic args) async {
     // `args` 只接受 `detail.danmakuData` 原样透传的 JSON 串（Rust 契约）。
-    // Dart 侧已无 `BiliBiliDanmakuArgs` 类型（ADR-014 删除 Dart core 实现）。
+    // Dart 侧已无 `BiliBiliDanmakuArgs` 类型（Dart core 实现已删除）。
     final argsJson = args is String
         ? args
         : throw ArgumentError(

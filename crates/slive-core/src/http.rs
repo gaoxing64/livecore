@@ -1,6 +1,6 @@
 //! HTTP 传输层：`HttpTransport` 抽象（seam）+ `ReqwestTransport` 生产实现。
 //!
-//! 设计要点（见 `docs/rust-core/10-architecture.md §6.2 / §8.1`）：
+//! 设计要点：
 //! - 复用单个 `reqwest::Client`（连接池 / keep-alive），差异化请求头按请求携带；
 //! - 统一 rustls（纯 Rust），`.http1_only()` + 连接/请求超时；默认 `.no_proxy()`，
 //!   仅在显式设置 `SLIVE_PROXY_URL` 时启用该代理（Clash/TUN 的 fake-IP 环境需要）；
@@ -88,7 +88,7 @@ pub struct ReqwestTransport {
     client: reqwest::Client,
 }
 
-/// 构造共享 `reqwest::Client`（ADR-003 / §6.2）。
+/// 构造共享 `reqwest::Client`。
 pub fn build_client() -> reqwest::Client {
     let mut builder = reqwest::Client::builder()
         .http1_only()

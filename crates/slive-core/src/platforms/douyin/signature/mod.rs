@@ -26,7 +26,7 @@
 //!
 //! # 依赖方向
 //! 本模块是**纯计算**（无 HTTP、无 WS），只依赖 `crate::error`，
-//! 可被 FRB / Tauri 等任意前端复用，且不依赖 flutter_rust_bridge（ADR-001）。
+//! 可被 FRB / Tauri 等任意前端复用，且不依赖 flutter_rust_bridge。
 
 pub mod a_bogus;
 pub mod generate;

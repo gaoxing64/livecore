@@ -2,7 +2,7 @@
 //!
 //! 纪律（AC-39 / 裁决 J-6 / R-13）：本文件**只做类型翻译 + 转发**，零协议逻辑 ——
 //! URL 拼接 / 签名 / 解析 / 重连全部在 `slive-core`。异常由 `SliveError` -> `CoreError`
-//! 映射后抛出（两路径收敛到同一异常类型，ADR-006）。
+//! 映射后抛出（两路径收敛到同一异常类型）。
 //!
 //! ⚠️ **真机坑（Spec §13 修复记录，FRB FFI 线程无 tokio runtime）**：
 //! `DouyinDanmakuConnection::start` 在 FRB 的 FFI 调用线程上执行，那里**没有**

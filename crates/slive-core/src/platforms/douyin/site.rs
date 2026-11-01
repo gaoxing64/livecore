@@ -1,6 +1,6 @@
 //! 抖音站点句柄：状态 + 全方法编排（`site.rs` 仅编排，解析/构串下沉到各能力模块）。
 //!
-//! 状态（对齐 ADR-005 句柄级，非进程级静态）：
+//! 状态（句柄级，非进程级静态）：
 //! - `cookie`：注入的登录 cookie（`set_site_attrs`）；
 //! - `ttwid_cookie`：`getRequestHeaders` 换到的 ttwid，会**前置**拼到 `cookie` 前；
 //! - `hls_first`：清晰度列表里 hls 是否排在前（`set_site_attrs` 的 `hlsFirst`）；

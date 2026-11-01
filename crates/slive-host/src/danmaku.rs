@@ -71,7 +71,7 @@ fn spawn_douyu(
 
     // 斗鱼弹幕入参就是房间号本身（非 JSON）；空房间号 → InvalidInput。
     let args = DouyuDanmakuArgs::new(room_id)?;
-    // 明文 TCP（ADR-015），不走 WS/TLS。
+    // 明文 TCP，不走 WS/TLS。
     let connect = crate::tcp::factory(args.connect_url());
     let room_id = args.room_id.clone();
     let site = Arc::new(DouyuSite::new());

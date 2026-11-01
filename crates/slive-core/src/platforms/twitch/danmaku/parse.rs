@@ -15,8 +15,7 @@
 //!
 //! Q-A 会导致「未设置昵称颜色」与「无 display-name」的消息被静默丢弃 —— 这是 Dart 现状，
 //! 也是 QA 钉死的既有行为（`§4`：修正会让 Rust 与 Dart 不一致 → 违反 AC-30）。
-//! 实现**照搬**；是否修正属产品口径，已列入回传清单交由总监 + QA 裁决
-//! （见 `docs/rust-core/17-twitch-mapping.md §3`）。
+//! 实现**照搬**；是否修正属产品口径，已列入回传清单交由总监 + QA 裁决。
 //!
 //! 颜色值按 Dart 口径：去 `#` 后 `from_str_radix(16)`，再走
 //! [`LiveMessageColor::number_to_color`]（与 B站 `numberToColor` 同一实现）。

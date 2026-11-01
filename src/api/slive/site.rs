@@ -1,4 +1,4 @@
-//! FRB 可见门面：不透明句柄 `LiveBilibiliSite`（ADR-005）。
+//! FRB 可见门面：不透明句柄 `LiveBilibiliSite`。
 //!
 //! 桥层**只做类型翻译 + 转发**，零协议逻辑（URL/签名/解析/重试均在 `slive-core`）。
 //! 异常由 `slive-core` 的 `SliveError` -> `CoreError` 映射后抛出。

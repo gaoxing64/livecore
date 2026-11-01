@@ -1,6 +1,6 @@
 //! 播放线路门面：静态优选 / 实测优选 / 续流主机序重排。
 //!
-//! 桥层只做参数翻译与转发，排序与探测策略全部在 `slive_core::play`（ADR-008）。
+//! 桥层只做参数翻译与转发，排序与探测策略全部在 `slive_core::play`。
 
 use std::collections::HashMap;
 use std::time::Duration;

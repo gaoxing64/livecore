@@ -11,7 +11,7 @@
 //! 会话语义**复用** [`crate::ws::runner::run_session`] 的约定（心跳 60s / 重连 5s×5 /
 //! 收到消息后计数归零），但由于虎牙的 join 帧、心跳帧与解码器都不同，
 //! 主循环在本文件内实现（`run_session` 硬编码 B站的 args 与编解码，不复用其函数体）。
-//! 连接工厂（`FrameSource`）由桥层注入 —— 核心 crate 不持有真实 WS 连接（ADR-001）。
+//! 连接工厂（`FrameSource`）由桥层注入 —— 核心 crate 不持有真实 WS 连接。
 
 pub mod args;
 pub mod bare;

@@ -1,7 +1,7 @@
 //! F-11 弹幕会话主循环：连接 → Ready → join → 帧循环（解码分发 + 帧间心跳）→ 断线重连。
 //!
 //! 事件模型见 [`LiveDanmuItem`]；连接工厂由桥层提供（生产 = tokio-tungstenite 包装），
-//! 核心 crate 不持有真实连接（ADR-001 纯核心边界）。
+//! 核心 crate 不持有真实连接（纯核心边界）。
 //!
 //! 时序（对照 Dart `WebScoketUtils` + `BiliBiliDanmaku`）：
 //! - 心跳 60s（帧间检查，时间来自注入源）；

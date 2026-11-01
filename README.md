@@ -1,7 +1,7 @@
 # simple_live_core
 
 项目核心库。**协议实现 100% 在 Rust**（`crates/slive-core`），Dart 侧只保留跨平台模型与
-FRB 绑定层 —— 不存在并行的 Dart 协议实现（ADR-014）。
+FRB 绑定层 —— 不存在并行的 Dart 协议实现。
 
 ## 目录
 
@@ -29,9 +29,6 @@ cargo test -p slive-core         # 仅纯核心
 cargo test -p slive-cli          # 仅 CLI（URL 解析）
 cargo clippy --all-targets       # 静态检查
 ```
-
-> 已知：`ac_twitch_danmaku`(7) + `ac_twitch_fixtures`(1) 共 8 条因二进制夹具被 CRLF 污染而恒红，
-> 根因与修法见 `doc/backlog.md` P0-1。
 
 ## 命令行
 
@@ -61,12 +58,12 @@ cargo build -p slive-cli --release
 Dart 侧统一 `import 'package:simple_live_core/simple_live_core.dart'`（绑定层经库出口暴露，
 `RustLib.init()` 见 `frb_generated.dart` 出口）。
 
-设计文档见 `docs/rust-core/` 与 `docs/decisions/`（仓库根）；组件知识库见 `doc/`（五件套）；
-绑定层边界与迁移决策见 ADR-008 / ADR-014。
+设计文档（`docs/rust-core/`、`docs/decisions/` 与 `doc/` 知识库）已归档至备份分支
+`backup/future-20261101-234115`。绑定层边界结论：桥层只做类型翻译与转发、零协议逻辑。
 
 ## 非 Dart 宿主（C# / C++ / Rust）
 
-核心与传输已从 Dart 完全解耦（ADR-016）：
+核心与传输已从 Dart 完全解耦：
 
 | 目标 | 入口 |
 |---|---|

@@ -1,6 +1,6 @@
 //! 日志辅助 + 敏感信息脱敏（AC-40）。
 //!
-//! 规则（对齐 `docs/rust-core/13-spec.md §9` 安全项）：credential / cookie **禁止**写入日志
+//! 规则：credential / cookie **禁止**写入日志
 //! （`bilibili_site.dart:598` 的 `CoreLog.i(cookieStr)` 行为在 Rust 侧**不得**复刻）。
 //! 本模块提供安全的日志入口，凡是与凭证相关的日志一律走 [`redact_secret`] / [`presence`]。
 

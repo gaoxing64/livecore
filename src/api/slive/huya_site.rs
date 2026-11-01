@@ -1,4 +1,4 @@
-//! 虎牙 FRB 门面：不透明句柄 `LiveHuyaSite`（ADR-005）。
+//! 虎牙 FRB 门面：不透明句柄 `LiveHuyaSite`。
 //!
 //! 与 B站门面（`site.rs`）**并列独立**，不改B站任何符号。
 //! 桥层**只做类型翻译 + 转发**，零协议逻辑（URL / 签名 / 正则 / TARS / 重试均在 `slive-core`）。

@@ -5,7 +5,7 @@
 //! 不是 JSON —— App 侧 `liveDanmaku.start(detail.danmakuData)` 原样透传即可
 //! （绑定层不解析，与 J-10 的口径一致：解析责任在 Rust 侧，非法值报错）。
 //!
-//! 传输：全平台统一走**明文 TCP**（ADR-015）。斗鱼弹幕代理对非系统 TLS 栈的
+//! 传输：全平台统一走**明文 TCP**。斗鱼弹幕代理对非系统 TLS 栈的
 //! ClientHello 做风控（rustls 握手被服务端 `HandshakeFailure`），WSS 在移动端不可用；
 //! 8601 与 WSS 使用完全相同的 STT 帧格式，且不需要任何握手头。
 

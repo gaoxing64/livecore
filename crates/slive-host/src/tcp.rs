@@ -1,4 +1,4 @@
-//! 明文 TCP 帧源（斗鱼弹幕 `danmuproxy.douyu.com:8601`，ADR-015）。
+//! 明文 TCP 帧源（斗鱼弹幕 `danmuproxy.douyu.com:8601`）。
 //!
 //! 与 [`super::session::FrameSource`] 同接口，供斗鱼会话直接复用；帧格式与 WSS 一致：
 //!

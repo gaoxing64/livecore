@@ -1,6 +1,6 @@
 //! 虎牙站点句柄：句柄级状态 + 15 方法编排（`site.rs` 仅编排，能力下沉到各模块）。
 //!
-//! 状态（对齐 ADR-005 与 Dart 现状）：
+//! 状态：
 //! - `hysdk_ua`：Dart 是**可变的 static**（`HuyaRequestParams.HYSDK_UA`，被 `setSiteAttrs` 改写），
 //!   Rust 落为**句柄级**（请求头集合与 Dart 一致，属行为不变；见 `13-spec.md §10`）；
 //! - 注入的 [`HttpTransport`] / [`TimeSource`] 使离线夹具与确定性时间断言可行

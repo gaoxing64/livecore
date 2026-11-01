@@ -6,7 +6,7 @@
 //! - 生产：[`ReqwestDouyuPost`]（复用 `crate::http::build_client` 的共享 rustls Client 配置）
 //! - 测试：[`MockDouyuPost`]（按 URL 子串返回夹具 + 记录请求，供离线用例断言）
 //!
-//! 纪律：**不自动重试**（业务错误码由上层判定并抛错，见 `docs/rust-core/13-spec.md` §9）。
+//! 纪律：**不自动重试**（业务错误码由上层判定并抛错）。
 
 use std::sync::Mutex;
 

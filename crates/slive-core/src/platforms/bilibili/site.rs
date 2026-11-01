@@ -1,6 +1,6 @@
 //! B站站点句柄：状态 + 15 方法编排（`site.rs` 仅编排，解析/构串下沉到各能力模块）。
 //!
-//! 状态（ADR-005）：cookie / user_id / buvid / wbi 缓存均为**句柄级**（非进程级静态）；
+//! 状态：cookie / user_id / buvid / wbi 缓存均为**句柄级**（非进程级静态）；
 //! 注入的 [`HttpTransport`] 与 [`TimeSource`] 使离线夹具与确定性时间断言可行。
 
 use std::sync::{Arc, Mutex};

@@ -1,8 +1,8 @@
 //! Simple Live 纯核心 crate。
 //!
-//! 分层（只向下依赖，见 `docs/rust-core/10-architecture.md §1.3`）：
+//! 分层（只向下依赖）：
 //! `platforms` -> `models`/`http`/`error`；`models` 不依赖 `platforms`。
-//! 本 crate **不得**依赖 flutter_rust_bridge（复用边界，ADR-001）。
+//! 本 crate **不得**依赖 flutter_rust_bridge（复用边界）。
 //!
 //! 可测试性 seam（注入点，见 §8.4(c) / 交付硬约束）：
 //! - [`http::HttpTransport`]：HTTP 传输抽象（生产 [`http::ReqwestTransport`] / 测试 [`testing::MockTransport`]，

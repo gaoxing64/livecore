@@ -90,7 +90,7 @@ async fn run_douyu(
     use slive_core::platforms::douyu::DouyuSite;
 
     // 斗鱼只需房间号即可建会话（与 Dart console 一致），不依赖 danmaku_data。
-    // 传输为明文 TCP（ADR-015），不再走 WSS/TLS。
+    // 传输为明文 TCP，不再走 WSS/TLS。
     let args = DouyuDanmakuArgs::new(&detail.room_id).map_err(|e| e.to_string())?;
     let connect = slive_host::tcp::factory(args.connect_url());
 

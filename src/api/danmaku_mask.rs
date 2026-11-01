@@ -1,4 +1,4 @@
-//! 弹幕去重/合并的 FRB 门面：算法本体在 `slive_core::danmaku::mask`（ADR-016）。
+//! 弹幕去重/合并的 FRB 门面：算法本体在 `slive_core::danmaku::mask`。
 //!
 //! 本文件只做类型翻译（newtype 包装 + 结果映射），零算法逻辑。
 //! 保持 `#[frb(opaque)]` 与全部 `pub` 签名不变 —— 生成物无需重跑 codegen。

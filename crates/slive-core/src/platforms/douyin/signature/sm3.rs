@@ -125,7 +125,7 @@ fn compress_block(v: &mut [u32; 8], block: &[u8]) {
         g = rotl(f, 19);
         f = e;
         // 注意是 **P0**（rotl 9/17），P1 只用在上面的消息扩展 —— 用错会得到
-        // 与 GB/T 标准完全不同的摘要（本项目踩过这个坑，见 docs/rust-core/evidence-douyin-sig-*.log）。
+        // 与 GB/T 标准完全不同的摘要（本项目踩过这个坑）。
         e = p0(tt2);
     }
 

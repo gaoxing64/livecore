@@ -1,4 +1,4 @@
-//! FRB 可见模型镜像：以 `#[frb(mirror)]` 暴露 `slive-core::models` 的类型（ADR-007 主路径，已 spike 验证）。
+//! FRB 可见模型镜像：以 `#[frb(mirror)]` 暴露 `slive-core::models` 的类型（主路径，已 spike 验证）。
 //!
 //! 规则（FRB 2 external-types 文档）：
 //! 1. 被镜像的外部类型必须**公开再导出**；

@@ -1,4 +1,4 @@
-//! B站平台实现（对照 `docs/rust-core/12-bilibili-mapping.md`）。
+//! B站平台实现。
 
 pub mod account;
 pub mod buvid;

@@ -1,6 +1,6 @@
 //! 斗鱼站点句柄：状态 + 15 方法编排（`site.rs` 仅编排，解析/构串下沉到各能力模块）。
 //!
-//! 状态（对齐 ADR-005）：cookie / `dy_did` / `LTP0` / 加密密钥缓存均为**句柄级**
+//! 状态：cookie / `dy_did` / `LTP0` / 加密密钥缓存均为**句柄级**
 //! （Dart core 的 `DouyuUtils._did/_encKey` 是进程级静态，迁到句柄级不改变请求参数集合）。
 //!
 //! 注入点：[`HttpTransport`]（GET）+ [`DouyuPost`]（表单 POST）+ [`TimeSource`]，

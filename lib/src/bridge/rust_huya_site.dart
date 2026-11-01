@@ -2,7 +2,7 @@
 //!
 //! 纪律（AC-39 / 裁决 J-6 / R-13）：本层**只做类型翻译与转发**，零协议逻辑 ——
 //! 不得出现 URL 拼接 / 签名 / TARS 解析 / 正则 / 重试；一切协议能力在
-//! `slive-core`（Rust）。回退窗口已结束（ADR-008）：`sites.dart` 直连本绑定层。
+//! `slive-core`（Rust）。回退窗口已结束：`sites.dart` 直连本绑定层。
 //!
 //! 与 B站绑定的差异：虎牙 `detail.danmakuData` / `quality.data` 在 Rust 侧是
 //! **JSON 串**（`schema_version` 契约），本层**原样透传**，不解析 ——

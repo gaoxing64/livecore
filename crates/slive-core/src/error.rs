@@ -1,4 +1,4 @@
-//! 统一错误模型（对照 `docs/rust-core/10-architecture.md §7`）。
+//! 统一错误模型。
 //!
 //! 两层：
 //! - [`SliveError`]（thiserror）：core 层错误，`platforms` 层方法统一返回它，**可枚举匹配**（AC-17/AC-23/AC-25 断言依据）。
@@ -52,7 +52,7 @@ impl SliveError {
     }
 }
 
-/// HTTP 状态码 -> 文案（对齐全 `simple_live_core/lib/src/common/core_error.dart`）。
+/// HTTP 状态码 -> 文案（对齐 Dart 侧 `CoreError` 文案）。
 pub fn status_code_to_string(status: u16) -> String {
     match status {
         400 => "错误的请求(400)".to_string(),

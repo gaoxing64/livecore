@@ -1,7 +1,7 @@
 //! IP-7 不变量守护：SM3 标准向量（**Dart 实测值**）+ 常量表维度。
 //!
 //! SM3 向量取自 Dart `package:dart_sm` 的 `SM3.hashBytes` 实跑结果，
-//! 并与 OpenSSL / Python `gmssl` 交叉验证一致（见 docs/rust-core/evidence-douyin-sig-*.log）。
+//! 并与 OpenSSL / Python `gmssl` 交叉验证一致。
 
 use slive_core::platforms::douyin::signature::tables::{
     BIG_ARRAY, CHARACTER, CHARACTER2, SORT_INDEX, SORT_INDEX2, XBOGUS_ALPHABET,

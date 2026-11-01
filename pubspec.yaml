@@ -6,7 +6,7 @@ publish_to: "none"
 environment: 
   sdk: '>=3.9.2 <4.0.0'
 
-# Dart 侧只剩三件事（协议实现 100% 在 crates/slive-core，见 ADR-014）：
+# Dart 侧只剩三件事（协议实现 100% 在 crates/slive-core）：
 #   1. lib/src/model + lib/src/interface —— App/TV 消费的跨平台模型与 LiveSite 契约；
 #   2. lib/src/bridge —— rust_*_site.dart，把 FRB 模型翻译成上面这套模型（零协议逻辑）；
 #   3. lib/src/rust —— FRB 生成物（入库）。

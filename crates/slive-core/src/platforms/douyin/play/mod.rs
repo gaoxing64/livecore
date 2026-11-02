@@ -10,7 +10,8 @@
 //!    整个直播间被判成「加载失败」。
 //! 2. 画质列表（`pull_data.options.qualities`）为空 -> 直接用地址表
 //!    （`flv_pull_url` + `hls_pull_url_map`）的键当画质名，按键数从高到低排档位。
-//! 3. 有画质列表：`stream_data` 不以 `{` 开头 -> 按 `level` 在地址表里**倒序索引**取值；
+//! 3. 有画质列表：`stream_data` 不以 `{` 开头 -> 优先按 `sdk_key`/名称匹配地址表，
+//!    匹配不到再按 `level` **倒序索引**取值；
 //!    否则解析 `stream_data` JSON，按 `sdk_key` 精确取 `main.flv` / `main.hls`。
 //!
 //! # hlsFirst
@@ -54,6 +55,7 @@ pub(crate) fn fetch_qualities(
         .and_then(|p| p.get("stream_data"))
         .map(crate::util::value_to_string)
         .unwrap_or_default();
+    let stream_data = stream_data.trim_start();
 
     let mut out = if qualities.is_empty() {
         from_url_tables(&data, hls_first)
@@ -114,13 +116,22 @@ mod tests {
         let site = DouyinSite::new();
         let mut detail = detail_with(json!({}));
         detail.data = Some("{}".to_string());
-        assert_eq!(fetch_qualities(&site, &detail).expect("应返回空"), Vec::new());
+        assert_eq!(
+            fetch_qualities(&site, &detail).expect("应返回空"),
+            Vec::new()
+        );
 
         detail.data = None;
-        assert_eq!(fetch_qualities(&site, &detail).expect("应返回空"), Vec::new());
+        assert_eq!(
+            fetch_qualities(&site, &detail).expect("应返回空"),
+            Vec::new()
+        );
 
         detail.data = Some("   ".to_string());
-        assert_eq!(fetch_qualities(&site, &detail).expect("应返回空"), Vec::new());
+        assert_eq!(
+            fetch_qualities(&site, &detail).expect("应返回空"),
+            Vec::new()
+        );
     }
 
     #[test]
@@ -212,6 +223,174 @@ mod tests {
         assert_eq!(got[0].data, r#"["https://hflv"]"#);
         assert_eq!(got[1].quality, "原画");
         assert_eq!(got[1].data, r#"["https://sflv","https://shls"]"#);
+    }
+
+    #[test]
+    fn stream_data_fills_origin_when_options_omit_it() {
+        let site = DouyinSite::new();
+        let stream_data = json!({
+            "data": {
+                "uhd": {"main": {"flv": "https://uhd.flv"}},
+                "origin": {"main": {"flv": "https://origin.flv"}},
+            }
+        })
+        .to_string();
+        let detail = detail_with(json!({
+            "live_core_sdk_data": {"pull_data": {
+                "options": {"qualities": [
+                    {"name": "蓝光", "level": 4, "sdk_key": "uhd"},
+                ]},
+                "stream_data": stream_data,
+            }},
+        }));
+
+        let got = fetch_qualities(&site, &detail).expect("应能解析");
+        assert_eq!(got.len(), 2);
+        assert_eq!(
+            got[0].quality, "原画",
+            "接口漏报原画时应从 stream_data 补回"
+        );
+        assert_eq!(got[0].data, r#"["https://origin.flv"]"#);
+        assert_eq!(got[1].quality, "蓝光");
+    }
+
+    #[test]
+    fn stream_data_fills_origin_when_quality_item_has_no_url() {
+        let site = DouyinSite::new();
+        let stream_data = json!({
+            "data": {
+                "origin": {"main": {"flv": "https://origin.flv"}},
+                "uhd": {"main": {"flv": "https://uhd.flv"}},
+            }
+        })
+        .to_string();
+        let detail = detail_with(json!({
+            "live_core_sdk_data": {"pull_data": {
+                "options": {"qualities": [
+                    {"name": "原画", "level": 5, "sdk_key": "origin"},
+                    {"name": "蓝光", "level": 4, "sdk_key": "uhd"},
+                ]},
+                "stream_data": stream_data,
+            }},
+        }));
+
+        let got = fetch_qualities(&site, &detail).expect("应能解析");
+        assert_eq!(got.len(), 2);
+        assert_eq!(got[0].quality, "原画", "同名档位地址为空时仍应补回");
+        assert_eq!(got[0].data, r#"["https://origin.flv"]"#);
+    }
+
+    #[test]
+    fn stream_data_with_leading_whitespace_still_uses_json_branch() {
+        let site = DouyinSite::new();
+        let stream_data = format!(
+            " \n{}",
+            json!({
+                "data": {
+                    "origin": {"main": {"flv": "https://origin.flv"}},
+                }
+            })
+        );
+        let detail = detail_with(json!({
+            "live_core_sdk_data": {"pull_data": {
+                "options": {"qualities": [
+                    {"name": "原画", "level": 5, "sdk_key": "origin"},
+                ]},
+                "stream_data": stream_data,
+            }},
+        }));
+
+        let got = fetch_qualities(&site, &detail).expect("应能解析");
+        assert_eq!(got.len(), 1);
+        assert_eq!(got[0].quality, "原画");
+        assert_eq!(got[0].data, r#"["https://origin.flv"]"#);
+    }
+
+    #[test]
+    fn level_branch_prefers_sdk_key_over_misaligned_index() {
+        let site = DouyinSite::new();
+        let detail = detail_with(json!({
+            "live_core_sdk_data": {"pull_data": {
+                "options": {"qualities": [
+                    {"name": "原画", "level": 0, "sdk_key": "FULL_HD1"},
+                ]},
+                "stream_data": "",
+            }},
+            "flv_pull_url": {"FULL_HD1": "https://origin.flv"},
+        }));
+
+        let got = fetch_qualities(&site, &detail).expect("应能解析");
+        assert_eq!(got.len(), 1);
+        assert_eq!(got[0].quality, "原画");
+        assert_eq!(got[0].data, r#"["https://origin.flv"]"#);
+    }
+
+    #[test]
+    fn level_branch_drops_known_key_missing_from_url_table() {
+        let site = DouyinSite::new();
+        let detail = detail_with(json!({
+            "live_core_sdk_data": {"pull_data": {
+                "options": {"qualities": [
+                    {"name": "原画", "level": 0, "sdk_key": "FULL_HD1"},
+                    {"name": "高清", "level": 1, "sdk_key": "HD1"},
+                    {"name": "标清", "level": 2, "sdk_key": "SD1"},
+                ]},
+                "stream_data": "",
+            }},
+            "flv_pull_url": {
+                "FULL_HD1": "https://origin.flv",
+                "HD1": "https://hd.flv",
+            },
+        }));
+
+        let got = fetch_qualities(&site, &detail).expect("应能解析");
+        assert_eq!(
+            got.iter()
+                .map(|item| item.quality.as_str())
+                .collect::<Vec<_>>(),
+            vec!["高清", "原画"],
+            "已知 sdk_key 缺失时不能按 level 错接到别的地址"
+        );
+    }
+
+    #[test]
+    fn stream_data_branch_accepts_case_and_key_aliases() {
+        let site = DouyinSite::new();
+        let stream_data = json!({
+            "data": {
+                "ORIGION": {"main": {"flv": "https://origin.flv"}},
+                "FULL_HD1": {"main": {"flv": "https://uhd.flv"}},
+                "HD1": {"main": {"flv": "https://hd.flv"}},
+                "SD2": {"main": {"flv": "https://sd.flv"}},
+                "SD1": {"main": {"flv": "https://ld.flv"}},
+            }
+        })
+        .to_string();
+        let detail = detail_with(json!({
+            "live_core_sdk_data": {"pull_data": {
+                "options": {"qualities": [
+                    {"name": "标清", "level": 1, "sdk_key": "ld"},
+                    {"name": "高清", "level": 2, "sdk_key": "sd"},
+                    {"name": "超清", "level": 3, "sdk_key": "hd"},
+                    {"name": "蓝光", "level": 4, "sdk_key": "uhd"},
+                    {"name": "原画", "level": 5, "sdk_key": "origin"},
+                ]},
+                "stream_data": stream_data,
+            }},
+        }));
+
+        let got = fetch_qualities(&site, &detail).expect("应能解析");
+        assert_eq!(
+            got.iter()
+                .map(|item| item.quality.as_str())
+                .collect::<Vec<_>>(),
+            vec!["原画", "蓝光", "超清", "高清", "标清"]
+        );
+        assert_eq!(got[0].data, r#"["https://origin.flv"]"#);
+        assert_eq!(got[1].data, r#"["https://uhd.flv"]"#);
+        assert_eq!(got[2].data, r#"["https://hd.flv"]"#);
+        assert_eq!(got[3].data, r#"["https://sd.flv"]"#);
+        assert_eq!(got[4].data, r#"["https://ld.flv"]"#);
     }
 
     #[test]

@@ -175,9 +175,9 @@ fn data_shape_variants_cover_malformed_responses() {
 }
 
 #[test]
-fn quality_variant_pins_the_misalignment_behavior() {
-    // Q12：分支② 按 `flvList[len - level]` 取值，档位与地址**整体错位一档**。
-    // 已用独立复算确认：level=0 越界被丢弃，标清拿到原画地址。
+fn quality_variant_no_longer_misaligns_sdk_keys() {
+    // Q12：旧实现按 `flvList[len - level]` 取值会整体错位一档；
+    // 现在优先按 sdk_key 匹配，只有地址表缺对应键时才丢弃该档。
     let key = "live_douyin_com_stream_url_quality";
     let variants = sample(PLATFORM, key)["variants"].as_array().expect("variants").clone();
     let v = variants
@@ -185,14 +185,14 @@ fn quality_variant_pins_the_misalignment_behavior() {
         .find(|v| v["name"].as_str().is_some_and(|n| n.contains("分支②")))
         .expect("缺分支②（stream_data 为空 -> 地址表索引）");
     assert!(v["expected"]["dropped"].is_array(), "必须显式登记被丢弃的档位");
-    assert_eq!(v["expected"]["dropped"][0]["quality"], "原画");
+    assert_eq!(v["expected"]["dropped"][0]["quality"], "标清");
     assert!(
-        v["expected"]["note"].as_str().is_some_and(|n| n.contains("错位")),
-        "必须写明这是既有错位行为、不得顺手修正"
+        v["expected"]["note"].as_str().is_some_and(|n| n.contains("sdk_key")),
+        "必须说明按 sdk_key 匹配后的档位口径"
     );
     assert!(
-        v["expected"]["note"].as_str().is_some_and(|n| n.contains("AC-30")),
-        "须关联回归约束"
+        v["expected"]["note"].as_str().is_some_and(|n| n.contains("错位")),
+        "须说明修复的是旧实现错位问题"
     );
 }
 

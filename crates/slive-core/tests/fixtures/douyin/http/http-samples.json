@@ -1816,7 +1816,7 @@
         "qualities[].name / level / sdk_key": ":1024/:1056/:1039",
         "stream_data 以 '{' 开头 -> 走 JSON 分支": ":1033 `qualityData[sdk_key].main.flv/.hls`",
         "stream_data 为空串 -> 走 flv/hls 地址表分支": ":1000-1031（**按 level 倒序索引**）",
-        "flv/hls 地址表分支的配对": ":1015-1021 `flvList[flvList.length - level]`",
+        "flv/hls 地址表分支的配对": "优先 `sdk_key`/名称匹配；已知键不在表中则该档不可用，未知键才回退 level 索引",
         "排序": ":1078 按 sort(=level) **降序**",
         "hlsFirst": "setSiteAttrs 可开启 hls 优先（:979/:1048）"
       },
@@ -1917,11 +1917,11 @@
           }
         ]
       },
-      "note": "清晰度有**两条完全不同的解析分支**（Dart:999 `streamData.startsWith('{')`）：\n①JSON 分支：按 sdk_key 取 main.flv/main.hls\n②地址表分支：stream_data 为空时，按 `length - level` **倒序索引**取 flv/hls 数组\n两分支的 URL 结果顺序不同，用例必须分别覆盖。\n**urls 为空的档位会被丢弃**（:1028/:1059 `if (urls.isNotEmpty)`）。",
+      "note": "清晰度有**两条完全不同的解析分支**（Dart:999 `streamData.startsWith('{')`）：\n①JSON 分支：按 sdk_key 取 main.flv/main.hls\n②地址表分支：优先按 sdk_key/名称匹配；已知键不在表中则该档不可用，未知键才回退 level 倒序索引。\n两分支的 URL 结果顺序不同，用例必须分别覆盖。\n**urls 为空的档位会被丢弃**（:1028/:1059 `if (urls.isNotEmpty)`）。",
       "verify_note": "`stream_data` 真实取值形态（是否恒为 JSON 串、还是常为空）待抓包 —— 这决定线上走哪条分支，是抖音取流最关键的未验证点。",
       "variants": [
         {
-          "name": "分支②：stream_data 为空 -> 地址表倒序索引（错位边界）",
+          "name": "分支②：stream_data 为空 -> sdk_key 匹配地址表",
           "response": {
             "status_code": 0,
             "data": [
@@ -1995,29 +1995,29 @@
           "expected": {
             "qualities": [
               {
-                "quality": "标清",
-                "sort": 2,
-                "urls": [
-                  "https://flv1.example.douyin.com/a.flv",
-                  "https://hls1.example.douyin.com/a.m3u8"
-                ]
-              },
-              {
                 "quality": "高清",
                 "sort": 1,
                 "urls": [
                   "https://flv1.example.douyin.com/b.flv",
                   "https://hls1.example.douyin.com/b.m3u8"
                 ]
+              },
+              {
+                "quality": "原画",
+                "sort": 0,
+                "urls": [
+                  "https://flv1.example.douyin.com/a.flv",
+                  "https://hls1.example.douyin.com/a.m3u8"
+                ]
               }
             ],
             "dropped": [
               {
-                "quality": "原画",
-                "sort": 0
+                "quality": "标清",
+                "sort": 2
               }
             ],
-            "note": "⚠️ **本夹具钉的是一个真实的错位行为**（已用 Dart 算法独立复算确认）：\n  flv/hls 地址表各只有 2 条，而 qualities 有 3 档（level 0/1/2），\n  Dart:1015 `flvIndex = flvList.length - level` 于是：\n    level=0 -> index 2 越界 -> urls 为空 -> **原画被丢弃**（:1028）\n    level=1 -> index 1 -> 拿到 HD1 的地址\n    level=2 -> index 0 -> 拿到 FULL_HD1 的地址（**标清却拿到原画地址**）\n  即：档位名与实际清晰度**整体错位一档**。\n  这是 Dart 既有行为，迁移必须一致；实现若「顺手修正」会导致与 Dart 不一致（AC-30 回归风险）。真实抓包需确认线上 stream_data 是否恒为 JSON 串（若恒为 JSON 则本分支线上不走到，属防御性覆盖）。"
+            "note": "修复后按 `sdk_key` 匹配地址表：原画取 FULL_HD1，高清取 HD1；SD1 不在地址表中，标清按不可用丢弃。这样避免旧实现 `len - level` 造成的档位错位。"
           }
         },
         {

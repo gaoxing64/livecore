@@ -17,7 +17,6 @@
 //! 故此处显式 ignore；生成后请连同本 ignore 一并复核。
 // ignore_for_file: uri_does_not_exist
 
-import 'dart:async';
 import 'dart:convert';
 
 import 'package:simple_live_core/simple_live_core.dart';
@@ -25,36 +24,38 @@ import 'package:simple_live_core/simple_live_core.dart';
 import 'package:simple_live_core/src/rust/api/slive/twitch/danmaku.dart' as rust_twitch_danmaku;
 import 'package:simple_live_core/src/rust/api/slive/twitch/site.dart' as rust_twitch_site;
 import 'package:simple_live_core/src/rust/api/slive/models/danmu.dart' as rust_danmu;
+import 'package:simple_live_core/src/rust/api/slive/models/message.dart' as rust_msg;
 
+import 'rust_danmaku_base.dart';
+import 'rust_site_handle.dart';
 import 'rust_site_models.dart';
 
 /// Twitch 的 Rust Core 站点实现（D2：Dart 直连 FRB API，无 Dart 协议实现）。
-class RustTwitchSite extends LiveSite {
+class RustTwitchSite extends LiveSite
+    with RustSiteHandle<rust_twitch_site.LiveTwitchSite> {
   RustTwitchSite() {
     id = 'twitch';
     name = 'Twitch';
   }
 
-  Future<rust_twitch_site.LiveTwitchSite>? _siteFuture;
+  @override
+  Future<rust_twitch_site.LiveTwitchSite> createSite() =>
+      rust_twitch_site.LiveTwitchSite.default_();
 
-  /// `setSiteAttrs` 是同步接口而 FRB 句柄初始化是异步 —— 暂存，
-  /// 下一次 `_site()` 调用前应用。
-  ///
+  @override
+  void applyAttrs(rust_twitch_site.LiveTwitchSite site, String attrsJson) =>
+      site.setSiteAttrs(data: attrsJson);
+
   /// ⚠️ Twitch 的 Dart core 实现是 `throw UnimplementedError()`（`twitch_site.dart:298`），
   /// Rust 侧同样返回错误（`platforms/twitch/unsupported.rs`）。**这里不做静默吞掉**：
   /// 保留暂存语义是为了让 App 若调用该接口时能看到 Rust 抛出的同一类错误，
   /// 而不是被本地缓存骗过去。
-  String? _pendingAttrs;
-
-  Future<rust_twitch_site.LiveTwitchSite> _site() async {
-    final site =
-        await (_siteFuture ??= rust_twitch_site.LiveTwitchSite.default_());
-    final pending = _pendingAttrs;
-    if (pending != null) {
-      site.setSiteAttrs(data: pending);
-      _pendingAttrs = null;
-    }
-    return site;
+  @override
+  void setSiteAttrs(String data) {
+    // 空串 = 未登录账号的 credential（`accountLogin` 既有路径）。空串不是合法
+    // JSON，core 层虽已容错，这里仍显式跳过 —— 暂存语义只接受有效 JSON。
+    if (data.isEmpty) return;
+    super.setSiteAttrs(data);
   }
 
   @override
@@ -63,7 +64,7 @@ class RustTwitchSite extends LiveSite {
   /// Twitch 无分类（Dart core 直接返回空列表）。
   @override
   Future<List<LiveCategory>> getCategories() async =>
-      (await (await _site()).getCategories())
+      (await (await siteHandle()).getCategories())
           .map(RustSiteModels.toCoreCategory)
           .toList();
 
@@ -75,7 +76,7 @@ class RustTwitchSite extends LiveSite {
     int? pageSize,
   }) async =>
       RustSiteModels.toCoreCategoryResult(
-        await (await _site()).getCategoryRooms(
+        await (await siteHandle()).getCategoryRooms(
           category: RustSiteModels.toRustSubCategory(category),
           page: page,
           pageSize: pageSize,
@@ -86,14 +87,14 @@ class RustTwitchSite extends LiveSite {
   @override
   Future<LiveCategoryResult> getRecommendRooms({int page = 1, int? pageSize}) async =>
       RustSiteModels.toCoreCategoryResult(
-        await (await _site()).getRecommendRooms(page: page, pageSize: pageSize),
+        await (await siteHandle()).getRecommendRooms(page: page, pageSize: pageSize),
       );
 
   /// Twitch 不支持搜索房间（Dart core `throw Exception`）。
   @override
   Future<LiveSearchRoomResult> searchRooms(String keyword, {int page = 1}) async =>
       RustSiteModels.toCoreSearchRoom(
-        await (await _site()).searchRooms(keyword: keyword, page: page),
+        await (await siteHandle()).searchRooms(keyword: keyword, page: page),
       );
 
   /// Twitch 不支持搜索主播（Dart core `throw Exception`）。
@@ -101,19 +102,19 @@ class RustTwitchSite extends LiveSite {
   Future<LiveSearchAnchorResult> searchAnchors(String keyword,
           {int page = 1}) async =>
       RustSiteModels.toCoreSearchAnchor(
-        await (await _site()).searchAnchors(keyword: keyword, page: page),
+        await (await siteHandle()).searchAnchors(keyword: keyword, page: page),
       );
 
   @override
   Future<LiveRoomDetail> getRoomDetail({required String roomId}) async =>
       RustSiteModels.toCoreRoomDetail(
-        await (await _site()).getRoomDetail(roomId: roomId),
+        await (await siteHandle()).getRoomDetail(roomId: roomId),
       );
 
   @override
   Future<List<LivePlayQuality>> getPlayQualities(
           {required LiveRoomDetail detail}) async =>
-      (await (await _site())
+      (await (await siteHandle())
               .getPlayQualities(detail: RustSiteModels.toRustRoomDetail(detail)))
           .map(RustSiteModels.toCorePlayQuality)
           .toList();
@@ -122,7 +123,7 @@ class RustTwitchSite extends LiveSite {
   Future<LivePlayUrl> getPlayUrls(
       {required LiveRoomDetail detail, required LivePlayQuality quality}) async =>
       RustSiteModels.toCorePlayUrl(
-        await (await _site()).getPlayUrls(
+        await (await siteHandle()).getPlayUrls(
           detail: RustSiteModels.toRustRoomDetail(detail),
           quality: RustSiteModels.toRustPlayQuality(quality),
         ),
@@ -130,44 +131,33 @@ class RustTwitchSite extends LiveSite {
 
   @override
   Future<bool> getLiveStatus({required String roomId}) async =>
-      (await _site()).getLiveStatus(roomId: roomId);
+      (await siteHandle()).getLiveStatus(roomId: roomId);
 
   /// Rust 侧方法名为复数（对齐上游），Dart core 可见名保持单数（J-4/J-8）。
   @override
   Future<List<LiveSuperChatMessage>> getSuperChatMessage(
           {required String roomId}) async =>
-      (await (await _site()).getSuperChatMessages(roomId: roomId))
+      (await (await siteHandle()).getSuperChatMessages(roomId: roomId))
           .map(RustSiteModels.toCoreSuperChat)
           .toList();
-
-  @override
-  @override
-  void setSiteAttrs(String data) {
-    // 空串 = 未登录账号的 credential（`accountLogin` 既有路径）。空串不是合法
-    // JSON：Rust 侧解析报错，且会把 `_updateXxxAttr` 暂存的有效 attrs 覆盖成空
-    // （竞态：谁后谁赢，导致首页请求带着空 attrs 去炸 Rust）。core 层虽已容错，
-    // 这里仍显式跳过 —— 暂存语义只接受有效 JSON。
-    if (data.isEmpty) return;
-    _pendingAttrs = data;
-  }
 
   /// Twitch 无扫码登录（Dart core `throw UnimplementedError`）。
   @override
   Future<QRCode> getQRCode() async =>
-      RustSiteModels.toCoreQrCode(await (await _site()).getQrCode());
+      RustSiteModels.toCoreQrCode(await (await siteHandle()).getQrCode());
 
   /// Twitch 无扫码登录（Dart core `throw UnimplementedError`）。
   @override
   Future<QRPollResult> getQRPollResult({required String qrcodeKey}) async =>
       RustSiteModels.toCoreQrPollResult(
-        await (await _site()).getQrPollResult(qrcodeKey: qrcodeKey),
+        await (await siteHandle()).getQrPollResult(qrcodeKey: qrcodeKey),
       );
 
   /// Twitch 无账号体系（Dart core `throw UnimplementedError`）。
   @override
   Future<AccountInfo> getAccountInfo({required String credential}) async =>
       RustSiteModels.toCoreAccountInfo(
-        await (await _site()).getAccountInfo(credential: credential),
+        await (await siteHandle()).getAccountInfo(credential: credential),
       );
 }
 
@@ -175,58 +165,35 @@ class RustTwitchSite extends LiveSite {
 ///
 /// `start(args)` 的 `args` 为 `detail.danmakuData` 原样透传（JSON 契约串，
 /// Rust 侧 `TwitchDanmakuArgs::from_json` 解析失败抛 `CoreError` —— J-10）。
-///
-/// 多开播放（2026-10-18 修复）：每个 `RustTwitchDanmaku` 实例自持一个
-/// `TwitchDanmakuConnection` 句柄 —— 旧实现是全局单例，第二路 start 会把第一路
-/// stop 掉，表现为「只有一路有弹幕，另一路聊天区显示已手动停止」。
-class RustTwitchDanmaku extends LiveDanmaku {
-  StreamSubscription<rust_danmu.LiveDanmuItem>? _subscription;
-  rust_twitch_danmaku.TwitchDanmakuConnection? _conn;
-
-  // 心跳由 Rust 会话内部管理（40s，对齐 Dart `heartbeatTime`），
-  // Dart 侧 heartbeat()/heartbeatTime 不参与。
+/// 心跳由 Rust 会话内部管理（40s，对齐 Dart `heartbeatTime`），
+/// Dart 侧 heartbeat()/heartbeatTime 不参与。
+class RustTwitchDanmaku
+    extends RustDanmakuBase<rust_twitch_danmaku.TwitchDanmakuConnection> {
+  @override
+  String get adapterName => 'RustTwitchDanmaku';
 
   @override
-  Future<void> start(dynamic args) async {
-    final argsJson = args is String
-        ? args
-        : jsonEncode({
-            'schema_version': 1,
-            'channel': (args as String).toLowerCase(),
-          });
-    // 新会话 = 新句柄：先停掉旧会话（换台 / 刷新路径），再多开时各停各的。
-    await stop();
-    _conn = rust_twitch_danmaku.TwitchDanmakuConnection();
-    _subscription = _conn!.start(channelOrArgs: argsJson).listen(
-      (item) {
-        switch (item) {
-          case rust_danmu.LiveDanmuItem_Message(:final field0):
-            onMessage?.call(RustSiteModels.toCoreMessage(field0));
-          case rust_danmu.LiveDanmuItem_Control(:final field0):
-            switch (field0) {
-              case rust_danmu.LiveDanmuControlEvent_Ready():
-                onReady?.call();
-              case rust_danmu.LiveDanmuControlEvent_Reconnecting(:final attempt):
-                onClose?.call('与服务器断开连接，正在尝试重连($attempt)');
-              case rust_danmu.LiveDanmuControlEvent_Closed(:final field0):
-                onClose?.call(field0);
-            }
-        }
-      },
-      onError: (Object e) {
-        // 流级错误（解码失败等）不中断弹幕，记录即可
-        // ignore: avoid_print
-        CoreLog.error(e);
-      },
-      cancelOnError: false,
-    );
-  }
+  String normalizeArgs(dynamic args) => args is String
+      ? args
+      : jsonEncode({
+          'schema_version': 1,
+          'channel': (args as String).toLowerCase(),
+        });
 
   @override
-  Future<void> stop() async {
-    _conn?.stop();
-    await _subscription?.cancel();
-    _subscription = null;
-    _conn = null;
-  }
+  rust_twitch_danmaku.TwitchDanmakuConnection createConnection() =>
+      rust_twitch_danmaku.TwitchDanmakuConnection();
+
+  @override
+  Stream<rust_danmu.LiveDanmuItem> openStream(
+          rust_twitch_danmaku.TwitchDanmakuConnection conn, String args) =>
+      conn.start(channelOrArgs: args);
+
+  @override
+  void closeConnection(rust_twitch_danmaku.TwitchDanmakuConnection conn) =>
+      conn.stop();
+
+  @override
+  LiveMessage toCoreMessage(rust_msg.LiveMessage item) =>
+      RustSiteModels.toCoreMessage(item);
 }

@@ -9,8 +9,8 @@ import 'package:simple_live_core/simple_live_core.dart';
 /// 弹幕适配骨架：连接句柄类型 [C] 各平台不同（`DanmakuConnection` /
 /// `DouyinDanmakuConnection` 等），会话装配与事件分发全平台一致。
 ///
-/// `start(args)` 的 `args` 为 `detail.danmakuData` 原样透传（JSON 串，
-/// Rust 侧 `from_json` 解析失败抛 `CoreError`）。
+/// `start(args)` 的 `args` 为 `detail.danmakuData`，入参契约各平台不同
+///（JSON 串 / 房间号 / 频道名，见 [`normalizeArgs`]）。
 ///
 /// 多开播放（2026-10-18 修复）：每个实例自持一个连接句柄 —— 旧实现是
 /// 全局单例，第二路 start 会把第一路 stop 掉，表现为「只有一路有弹幕，
@@ -18,14 +18,15 @@ import 'package:simple_live_core/simple_live_core.dart';
 abstract class RustDanmakuBase<C extends Object> extends LiveDanmaku {
   StreamSubscription<rust_danmu.LiveDanmuItem>? _subscription;
   C? _conn;
+  bool _stopped = true;
 
   // 心跳由 Rust 会话内部管理，Dart 侧 heartbeat()/heartbeatTime 不参与。
 
   /// 创建各平台的弹幕连接句柄。
   C createConnection();
 
-  /// 以 `argsJson` 启动弹幕流。
-  Stream<rust_danmu.LiveDanmuItem> openStream(C conn, String argsJson);
+  /// 以归一化后的参数启动弹幕流。
+  Stream<rust_danmu.LiveDanmuItem> openStream(C conn, String args);
 
   /// 关闭连接句柄。
   void closeConnection(C conn);
@@ -36,19 +37,28 @@ abstract class RustDanmakuBase<C extends Object> extends LiveDanmaku {
   /// 报错文案用的适配器名。
   String get adapterName;
 
+  /// Rust 会话异常退出（如线程 panic）时 sink 被 drop，流会静默 onDone；
+  /// 置 `true` 的适配器在未手动停止时上报「弹幕连接已断开」，
+  /// 避免 UI 看起来只是「弹幕卡住」没有任何提示。
+  bool get notifyOnStreamDone => false;
+
+  /// 把 `start(args)` 入参归一为交给 Rust 的字符串（各平台契约不同）。
+  /// 默认只接受 JSON 串（Rust 契约）。
+  String normalizeArgs(dynamic args) => args is String
+      ? args
+      : throw ArgumentError(
+          '$adapterName.start 需要 danmakuData JSON 串，收到 ${args.runtimeType}',
+        );
+
   @override
   Future<void> start(dynamic args) async {
-    // `args` 只接受 `detail.danmakuData` 原样透传的 JSON 串（Rust 契约）。
-    final argsJson = args is String
-        ? args
-        : throw ArgumentError(
-            '$adapterName.start 需要 danmakuData JSON 串，收到 ${args.runtimeType}',
-          );
+    final argsString = normalizeArgs(args);
     // 新会话 = 新句柄：先停掉旧会话（换台 / 刷新路径），再多开时各停各的。
     await stop();
+    _stopped = false;
     final conn = createConnection();
     _conn = conn;
-    _subscription = openStream(conn, argsJson).listen(
+    _subscription = openStream(conn, argsString).listen(
       (item) {
         switch (item) {
           case rust_danmu.LiveDanmuItem_Message(:final field0):
@@ -69,12 +79,18 @@ abstract class RustDanmakuBase<C extends Object> extends LiveDanmaku {
         // ignore: avoid_print
         CoreLog.error(e);
       },
+      onDone: () {
+        if (!_stopped && notifyOnStreamDone) {
+          onClose?.call('弹幕连接已断开');
+        }
+      },
       cancelOnError: false,
     );
   }
 
   @override
   Future<void> stop() async {
+    _stopped = true;
     final conn = _conn;
     if (conn != null) {
       closeConnection(conn);

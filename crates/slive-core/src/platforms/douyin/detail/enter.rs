@@ -66,13 +66,14 @@ pub(crate) async fn fetch_by_web_rid_api(
         }
     }
 
-    Ok(build_detail_from_enter(
+    let detail = build_detail_from_enter(
         site,
         room,
         as_object(value.pointer("/data/user")),
         web_rid,
         &room_id,
-    ))
+    );
+    Ok(super::ensure_origin_quality(site, detail, web_rid, &room_id).await)
 }
 
 /// `web/enter` 的业务参数（固定 5 个键，插入序参与 a_bogus 签名）。
@@ -93,8 +94,162 @@ pub fn enter_params(web_rid: &str) -> super::super::util::QueryParams {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use std::sync::Arc;
+
     use serde_json::json;
+
+    use crate::testing::MockTransport;
+    use crate::time::SystemClock;
+
+    use super::*;
+
+    /// 5 档 options；`stream_data` 由用例决定（空串 = 旧地址表分支）。
+    fn enter_body(stream_data: &str) -> String {
+        json!({
+            "data": {
+                "data": [{
+                    "id_str": "7704356715309222696",
+                    "status": 2,
+                    "title": "测试直播间",
+                    "owner": {"nickname": "主播", "avatar_thumb": {"url_list": []}},
+                    "room_view_stats": {"display_value": 1},
+                    "stream_url": {
+                        "flv_pull_url": {
+                            "FULL_HD1": "https://x_uhd.flv",
+                            "HD1": "https://x_hd.flv",
+                            "SD1": "https://x_ld.flv",
+                            "SD2": "https://x_sd.flv"
+                        },
+                        "live_core_sdk_data": {"pull_data": {
+                            "options": {"qualities": [
+                                {"name": "标清", "level": 1, "sdk_key": "ld"},
+                                {"name": "高清", "level": 2, "sdk_key": "sd"},
+                                {"name": "超清", "level": 3, "sdk_key": "hd"},
+                                {"name": "蓝光", "level": 4, "sdk_key": "uhd"},
+                                {"name": "原画", "level": 5, "sdk_key": "origin"}
+                            ]},
+                            "stream_data": stream_data
+                        }}
+                    }
+                }],
+                "user": {"nickname": "主播"}
+            }
+        })
+        .to_string()
+    }
+
+    /// reflow/info 的完整阶梯（含 origin 地址）。
+    fn reflow_body() -> String {
+        let stream_data = json!({
+            "data": {
+                "origin": {"main": {"flv": "https://origin.flv"}},
+                "uhd": {"main": {"flv": "https://uhd.flv"}},
+                "hd": {"main": {"flv": "https://hd.flv"}},
+                "sd": {"main": {"flv": "https://sd.flv"}},
+                "ld": {"main": {"flv": "https://ld.flv"}}
+            }
+        })
+        .to_string();
+        let mut body: serde_json::Value = serde_json::from_str(&enter_body(&stream_data)).expect("enter");
+        let room = &mut body["data"]["data"][0];
+        room["owner"]["web_rid"] = json!("416144012050");
+        json!({"data": {"room": room.clone(), "user": {}}}).to_string()
+    }
+
+    fn site_with(mock: &Arc<MockTransport>) -> DouyinSite {
+        DouyinSite::with_deps(mock.clone(), Arc::new(SystemClock))
+    }
+
+    fn stub_homepage(mock: &MockTransport) {
+        mock.stub_with_cookie(
+            "https://live.douyin.com",
+            "{}",
+            vec!["ttwid=1%2Cabc; Path=/".to_string()],
+        );
+    }
+
+    #[tokio::test]
+    async fn enter_without_origin_falls_back_to_reflow() {
+        let mock = Arc::new(MockTransport::new());
+        mock.stub("webcast/room/web/enter", &enter_body(""));
+        mock.stub("reflow/info", &reflow_body());
+        stub_homepage(&mock);
+        let site = site_with(&mock);
+
+        let detail = fetch_by_web_rid_api(&site, "416144012050").await.expect("详情");
+        let qualities = crate::platforms::douyin::play::fetch_qualities(&site, &detail).expect("画质");
+        assert!(
+            qualities.iter().any(|item| item.quality == "原画"),
+            "缺少原画的 enter 结果应由 reflow 补全：{qualities:?}"
+        );
+        assert_eq!(qualities[0].quality, "原画");
+        assert_eq!(qualities[0].data, r#"["https://origin.flv"]"#);
+        assert_eq!(mock.request_count("reflow/info"), 1);
+    }
+
+    /// 真正只有 4 档的房间（有合法 stream_data、没有 origin）不应被“补全”打扰。
+    #[tokio::test]
+    async fn genuine_four_tier_room_does_not_hit_reflow() {
+        let stream_data = json!({
+            "data": {
+                "uhd": {"main": {"flv": "https://uhd.flv"}},
+                "hd": {"main": {"flv": "https://hd.flv"}},
+                "sd": {"main": {"flv": "https://sd.flv"}},
+                "ld": {"main": {"flv": "https://ld.flv"}}
+            }
+        })
+        .to_string();
+        let mut body: serde_json::Value =
+            serde_json::from_str(&enter_body(&stream_data)).expect("enter");
+        body["data"]["data"][0]["stream_url"]["live_core_sdk_data"]["pull_data"]["options"]
+            ["qualities"]
+            .as_array_mut()
+            .expect("qualities")
+            .pop();
+        let mock = Arc::new(MockTransport::new());
+        mock.stub("webcast/room/web/enter", &body.to_string());
+        mock.stub("reflow/info", &reflow_body());
+        stub_homepage(&mock);
+        let site = site_with(&mock);
+
+        let detail = fetch_by_web_rid_api(&site, "416144012050").await.expect("详情");
+        let qualities = crate::platforms::douyin::play::fetch_qualities(&site, &detail).expect("画质");
+        assert_eq!(qualities.len(), 4);
+        assert!(!qualities.iter().any(|item| item.quality == "原画"));
+        assert_eq!(
+            mock.request_count("reflow/info"),
+            0,
+            "房间本来就没有原画时不应多打请求"
+        );
+    }
+
+    #[tokio::test]
+    async fn complete_enter_result_does_not_hit_reflow() {
+        let stream_data = json!({
+            "data": {
+                "origin": {"main": {"flv": "https://origin.flv"}},
+                "uhd": {"main": {"flv": "https://uhd.flv"}},
+                "hd": {"main": {"flv": "https://hd.flv"}},
+                "sd": {"main": {"flv": "https://sd.flv"}},
+                "ld": {"main": {"flv": "https://ld.flv"}}
+            }
+        })
+        .to_string();
+        let mock = Arc::new(MockTransport::new());
+        mock.stub("webcast/room/web/enter", &enter_body(&stream_data));
+        mock.stub("reflow/info", &reflow_body());
+        stub_homepage(&mock);
+        let site = site_with(&mock);
+
+        let detail = fetch_by_web_rid_api(&site, "416144012050").await.expect("详情");
+        let qualities = crate::platforms::douyin::play::fetch_qualities(&site, &detail).expect("画质");
+        assert_eq!(qualities[0].quality, "原画");
+        assert_eq!(
+            mock.request_count("reflow/info"),
+            0,
+            "完整响应不应额外请求 reflow"
+        );
+    }
 
     #[test]
     fn enter_params_carry_required_keys() {

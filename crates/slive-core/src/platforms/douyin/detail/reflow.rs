@@ -49,6 +49,7 @@ pub(crate) async fn fetch_by_room_id(
     }
 
     super::super::header::ensure_ttwid(site).await?;
+    // 数据已经来自 reflow/info，这里再查同一接口几乎只会拿到相同结果，不做补全。
     Ok(build_detail_from_reflow_room(
         site,
         &room,

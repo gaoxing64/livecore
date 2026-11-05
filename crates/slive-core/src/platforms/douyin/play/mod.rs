@@ -280,6 +280,41 @@ mod tests {
         assert_eq!(got[0].data, r#"["https://origin.flv"]"#);
     }
 
+    /// 真实失败形态：`options` 有 5 档，但本次响应没带 `stream_data`（只剩 4 键的
+    /// 旧地址表）。此时 level 分支拿不到 origin 地址，会少一档 —— 这是 App 偶发
+    /// “只有蓝光没有原画”的解析侧表现，由详情层补全（见 `detail` 的原画补全）。
+    #[test]
+    fn missing_stream_data_drops_origin_and_is_detectable() {
+        let site = DouyinSite::new();
+        let detail = detail_with(json!({
+            "live_core_sdk_data": {"pull_data": {
+                "options": {"qualities": [
+                    {"name": "标清", "level": 1, "sdk_key": "ld"},
+                    {"name": "高清", "level": 2, "sdk_key": "sd"},
+                    {"name": "超清", "level": 3, "sdk_key": "hd"},
+                    {"name": "蓝光", "level": 4, "sdk_key": "uhd"},
+                    {"name": "原画", "level": 5, "sdk_key": "origin"},
+                ]},
+                "stream_data": "",
+            }},
+            "flv_pull_url": {
+                "FULL_HD1": "https://x_uhd.flv",
+                "HD1": "https://x_hd.flv",
+                "SD1": "https://x_ld.flv",
+                "SD2": "https://x_sd.flv",
+            },
+        }));
+
+        let got = fetch_qualities(&site, &detail).expect("应能解析");
+        assert_eq!(
+            got.iter()
+                .map(|item| item.quality.as_str())
+                .collect::<Vec<_>>(),
+            vec!["蓝光", "超清", "高清", "标清"],
+            "旧地址表没有 origin 地址，原画必然缺失"
+        );
+    }
+
     #[test]
     fn stream_data_with_leading_whitespace_still_uses_json_branch() {
         let site = DouyinSite::new();

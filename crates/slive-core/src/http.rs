@@ -81,6 +81,45 @@ pub fn check_api_code(value: &Value) -> Result<(), SliveError> {
 pub trait HttpTransport: Send + Sync {
     /// 发送一次 GET 请求。
     async fn get(&self, request: &HttpRequest) -> Result<HttpReply, SliveError>;
+
+    /// 发送一次 POST 请求。
+    ///
+    /// 默认实现用独立 `reqwest::Client`；测试的 mock 传输覆盖它，
+    /// 这样平台里的 POST（GQL / startPlay / InnerTube）也能被夹具接管。
+    async fn post(
+        &self,
+        request: &HttpRequest,
+        body: &str,
+        content_type: &str,
+    ) -> Result<HttpReply, SliveError> {
+        let client = build_client();
+        let mut builder = client.post(&request.url).header("content-type", content_type);
+        for (key, value) in &request.headers {
+            builder = builder.header(key.as_str(), value.as_str());
+        }
+        let response = builder
+            .body(body.to_string())
+            .send()
+            .await
+            .map_err(|e| SliveError::network(e.to_string()))?;
+        let status = response.status().as_u16();
+        let bytes = response
+            .bytes()
+            .await
+            .map_err(|e| SliveError::network(format!("读取响应体失败: {e}")))?;
+        let text = String::from_utf8_lossy(&bytes).into_owned();
+        if !(200..400).contains(&status) {
+            return Err(SliveError::Http {
+                status,
+                body: truncate(&text),
+            });
+        }
+        Ok(HttpReply {
+            status,
+            text,
+            set_cookie: Vec::new(),
+        })
+    }
 }
 
 /// 生产实现：`reqwest` + rustls，复用单个 Client。
@@ -149,12 +188,22 @@ impl HttpTransport for ReqwestTransport {
             .filter_map(|v| v.to_str().ok())
             .map(str::to_string)
             .collect();
-        let text = response
-            .text()
+        // 页面与接口均为 UTF-8；`text()` 在响应未声明 charset 时会按 Latin-1
+        // 解码（快手房间页即如此），故显式按字节转 UTF-8。
+        let bytes = response
+            .bytes()
             .await
             .map_err(|e| SliveError::network(format!("读取响应体失败: {e}")))?;
+        let text = String::from_utf8_lossy(&bytes).into_owned();
 
         if !(200..400).contains(&status) {
+            // 允许 301/302 重定向（某些平台会返回 redirect）
+            if status == 301 || status == 302 {
+                return Err(SliveError::Api { 
+                    code: status as i32, 
+                    message: format!("HTTP 重定向 ({})", status) 
+                });
+            }
             return Err(SliveError::Http {
                 status,
                 body: truncate(&text),
@@ -167,6 +216,152 @@ impl HttpTransport for ReqwestTransport {
         })
     }
 }
+
+// ============================================================================
+// HTTP Transport Extension (供各平台复用)
+// ============================================================================
+
+#[async_trait::async_trait]
+pub trait HttpTransportExt: HttpTransport + Send + Sync {
+    /// GET URL 并返回文本（带 cookie）。
+    async fn get_with_cookie(&self, url: &str, cookie: &str) -> Result<String, SliveError> {
+        self.get_with_headers(
+            url,
+            &[
+                ("cookie".to_string(), cookie.to_string()),
+                ("referer".to_string(), "https://www.acfun.cn/".to_string()),
+            ],
+        )
+        .await
+    }
+
+    /// GET URL 并返回文本（调用方头覆盖默认头，同名以调用方为准）。
+    async fn get_with_headers(
+        &self,
+        url: &str,
+        headers: &[(String, String)],
+    ) -> Result<String, SliveError> {
+        let mut all = vec![("user-agent".to_string(), DEFAULT_USER_AGENT.to_string())];
+        for (key, value) in headers {
+            if let Some(existing) = all
+                .iter_mut()
+                .find(|(name, _)| name.eq_ignore_ascii_case(key))
+            {
+                existing.1 = value.clone();
+            } else {
+                all.push((key.clone(), value.clone()));
+            }
+        }
+        let request = HttpRequest {
+            url: url.to_string(),
+            query: Vec::new(),
+            headers: all,
+        };
+        let reply = self.get(&request).await?;
+        Ok(reply.text)
+    }
+
+    /// GET URL 并解析 JSON。
+    async fn get_json(&self, url: &str) -> Result<Value, SliveError> {
+        let request = HttpRequest {
+            url: url.to_string(),
+            query: vec![],
+            headers: vec![
+                ("user-agent".to_string(), DEFAULT_USER_AGENT.to_string()),
+                ("accept-language".to_string(), "zh-CN,zh;q=0.9,en;q=0.8".to_string()),
+                ("referer".to_string(), "https://www.acfun.cn/".to_string()),
+            ],
+        };
+        let reply = self.get(&request).await?;
+        reply.json()
+    }
+
+    /// GET URL 并返回文本。
+    async fn get_text(&self, url: &str) -> Result<String, SliveError> {
+        let request = HttpRequest {
+            url: url.to_string(),
+            query: vec![],
+            headers: vec![
+                ("user-agent".to_string(), DEFAULT_USER_AGENT.to_string()),
+            ],
+        };
+        let reply = self.get(&request).await?;
+        Ok(reply.text)
+    }
+
+    /// POST form data（form-urlencoded）。
+    async fn post_form(&self, url: &str, body: &str) -> Result<String, SliveError> {
+        self.post_form_with_headers(url, body, &[]).await
+    }
+
+    /// POST form data with cookie header。
+    async fn post_form_with_cookie(
+        &self,
+        url: &str,
+        body: &str,
+        cookie: &str,
+    ) -> Result<String, SliveError> {
+        self.post_form_with_headers(url, body, &[("cookie", cookie.to_string())])
+            .await
+    }
+
+    /// POST form data with custom headers。
+    async fn post_form_with_headers(
+        &self,
+        url: &str,
+        body: &str,
+        headers: &[(&str, String)],
+    ) -> Result<String, SliveError> {
+        let request = HttpRequest {
+            url: url.to_string(),
+            query: Vec::new(),
+            headers: post_headers(headers),
+        };
+        let reply = self
+            .post(&request, body, "application/x-www-form-urlencoded")
+            .await?;
+        Ok(reply.text)
+    }
+
+    /// POST JSON 并返回响应文本。
+    async fn post_json(&self, url: &str, json_body: &str) -> Result<String, SliveError> {
+        let request = HttpRequest {
+            url: url.to_string(),
+            query: Vec::new(),
+            headers: post_headers(&[]),
+        };
+        let reply = self.post(&request, json_body, "application/json").await?;
+        Ok(reply.text)
+    }
+
+    /// POST JSON（按给定请求描述，含自定义头）并返回响应文本。
+    async fn post_json_with(
+        &self,
+        request: &HttpRequest,
+        json_body: &str,
+    ) -> Result<String, SliveError> {
+        let reply = self.post(request, json_body, "application/json").await?;
+        Ok(reply.text)
+    }
+}
+
+/// POST 的默认请求头（UA + 调用方附加头；同名以调用方为准）。
+fn post_headers(extra: &[(&str, String)]) -> Vec<(String, String)> {
+    let mut headers = vec![("user-agent".to_string(), DEFAULT_USER_AGENT.to_string())];
+    for (key, value) in extra {
+        if let Some(existing) = headers
+            .iter_mut()
+            .find(|(name, _)| name.eq_ignore_ascii_case(key))
+        {
+            existing.1 = value.clone();
+        } else {
+            headers.push(((*key).to_string(), value.clone()));
+        }
+    }
+    headers
+}
+
+impl<T: HttpTransport + ?Sized> HttpTransportExt for T {}
 
 fn truncate(body: &str) -> String {
     if body.chars().count() <= ERROR_BODY_CAP {

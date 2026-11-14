@@ -51,6 +51,9 @@ pub async fn run(
             let on_item = move |item: LiveDanmuItem| print_item(&item, color, show_emoticons);
             run_twitch(detail, stop_rx, on_item).await
         }
+        Platform::Kuaishou | Platform::Acfun | Platform::Weibo | Platform::Xiaohongshu | Platform::YouTube => {
+            Err("该平台弹幕暂未实现".to_string())
+        }
     }
 }
 

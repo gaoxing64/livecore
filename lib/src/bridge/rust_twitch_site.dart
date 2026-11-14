@@ -61,14 +61,14 @@ class RustTwitchSite extends LiveSite
   @override
   LiveDanmaku getDanmaku() => RustTwitchDanmaku();
 
-  /// Twitch 无分类（Dart core 直接返回空列表）。
+  /// 分类标签 + 标签下的目录（Rust core 按 PureLive 的 Twitch 实现提供）。
   @override
   Future<List<LiveCategory>> getCategories() async =>
       (await (await siteHandle()).getCategories())
           .map(RustSiteModels.toCoreCategory)
           .toList();
 
-  /// Twitch 无分类房间（Dart core 返回空结果）。
+  /// 目录下的直播，按 cursor 快照分页；`category.id` 是目录 slug。
   @override
   Future<LiveCategoryResult> getCategoryRooms(
     LiveSubCategory category, {
@@ -83,21 +83,21 @@ class RustTwitchSite extends LiveSite
         ),
       );
 
-  /// Twitch 不支持推荐（Dart core `throw UnimplementedError`）—— 错误原样抛出。
+  /// 首页推荐：全站最热直播，按 cursor 快照分页。
   @override
   Future<LiveCategoryResult> getRecommendRooms({int page = 1, int? pageSize}) async =>
       RustSiteModels.toCoreCategoryResult(
         await (await siteHandle()).getRecommendRooms(page: page, pageSize: pageSize),
       );
 
-  /// Twitch 不支持搜索房间（Dart core `throw Exception`）。
+  /// 搜索房间：命中的在播频道，沿 CHANNEL cursor 翻页。
   @override
   Future<LiveSearchRoomResult> searchRooms(String keyword, {int page = 1}) async =>
       RustSiteModels.toCoreSearchRoom(
         await (await siteHandle()).searchRooms(keyword: keyword, page: page),
       );
 
-  /// Twitch 不支持搜索主播（Dart core `throw Exception`）。
+  /// 搜索主播：命中的全部频道，含未开播（`liveStatus` 标记）。
   @override
   Future<LiveSearchAnchorResult> searchAnchors(String keyword,
           {int page = 1}) async =>

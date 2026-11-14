@@ -34,6 +34,11 @@ enum class Platform : int32_t {
     Huya = SLIVE_PLATFORM_HUYA,
     Douyin = SLIVE_PLATFORM_DOUYIN,
     Twitch = SLIVE_PLATFORM_TWITCH,
+    Kuaishou = SLIVE_PLATFORM_KUAISHOU,
+    Acfun = SLIVE_PLATFORM_ACFUN,
+    Weibo = SLIVE_PLATFORM_WEIBO,
+    Xiaohongshu = SLIVE_PLATFORM_XIAOHONGSHU,
+    YouTube = SLIVE_PLATFORM_YOUTUBE,
 };
 
 inline std::string to_string(SliveStr s) {

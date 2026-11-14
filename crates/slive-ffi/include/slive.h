@@ -45,6 +45,11 @@ extern "C" {
 #define SLIVE_PLATFORM_HUYA     2
 #define SLIVE_PLATFORM_DOUYIN   3
 #define SLIVE_PLATFORM_TWITCH   4
+#define SLIVE_PLATFORM_KUAISHOU 5
+#define SLIVE_PLATFORM_ACFUN    6
+#define SLIVE_PLATFORM_WEIBO    7
+#define SLIVE_PLATFORM_XIAOHONGSHU 8
+#define SLIVE_PLATFORM_YOUTUBE  9
 
 /* 站点方法名（传给 slive_site_call） */
 #define SLIVE_METHOD_GET_CATEGORIES            "get_categories"

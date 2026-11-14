@@ -131,6 +131,22 @@ impl MockTransport {
 #[async_trait]
 impl HttpTransport for MockTransport {
     async fn get(&self, request: &HttpRequest) -> Result<HttpReply, SliveError> {
+        self.record_and_reply(request)
+    }
+
+    async fn post(
+        &self,
+        request: &HttpRequest,
+        _body: &str,
+        _content_type: &str,
+    ) -> Result<HttpReply, SliveError> {
+        // 夹具按 URL 子串匹配（与 GET 同口径），请求体暂不参与匹配。
+        self.record_and_reply(request)
+    }
+}
+
+impl MockTransport {
+    fn record_and_reply(&self, request: &HttpRequest) -> Result<HttpReply, SliveError> {
         self.requests
             .lock()
             .expect("requests poisoned")

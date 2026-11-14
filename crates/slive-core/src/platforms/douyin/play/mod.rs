@@ -62,7 +62,7 @@ pub(crate) fn fetch_qualities(
     } else if !stream_data.starts_with('{') {
         from_levels(&data, &qualities, hls_first)
     } else {
-        from_stream_data(&qualities, &stream_data, hls_first)
+        from_stream_data(&qualities, stream_data, hls_first)
     };
 
     // 档位从高到低（Dart `sort((a, b) => b.sort.compareTo(a.sort))`）

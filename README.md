@@ -8,9 +8,9 @@ FRB 绑定层 —— 不存在并行的 Dart 协议实现。
 | 路径 | 内容 |
 |------|------|
 | `Cargo.toml` / `Cargo.lock` | Rust workspace 根（成员：`slive-core`、`slive-cli`） |
-| `crates/slive-core/` | **纯核心 crate**（零 FRB 依赖）：`platforms/{bilibili,douyu,huya,twitch,douyin}`、`tars/`、`ws/`、`http/`、`time/`、`models/` |
+| `crates/slive-core/` | **纯核心 crate**（零 FRB 依赖）：`platforms/{bilibili,douyu,huya,twitch,douyin,kuaishou,acfun,weibo,xiaohongshu,youtube}`、`tars/`、`ws/`、`http/`、`time/`、`models/` |
 | `crates/slive-cli/` | 命令行工具 `slive`：只依赖 `slive-core` + `slive-host`，**不经过 FRB** |
-| `crates/slive-host/` | **宿主层**：真实 WS/TCP 连接 + 五平台弹幕会话装配（CLI / FRB 桥 / C ABI 共用） |
+| `crates/slive-host/` | **宿主层**：真实 WS/TCP 连接 + 弹幕会话装配（B站/斗鱼/虎牙/抖音/Twitch）（CLI / FRB 桥 / C ABI 共用） |
 | `crates/slive-ffi/` | **C ABI**（`cdylib`/`staticlib`）：`include/slive.h` + `slive.hpp`(C++) + `csharp/Slive.cs`(WinUI3) |
 | `src/` | FRB 桥层（`api/slive/**`；含既有 `danmaku_mask` 模块）+ `frb_generated.rs` |
 | `crates/slive-core/tests/` | 集成测试 + 离线夹具（`tests/fixtures/{platform}/`） |
@@ -38,6 +38,8 @@ cargo build -p slive-cli --release
 ./target/release/slive info    https://live.bilibili.com/7734200
 ./target/release/slive danmaku https://live.bilibili.com/6
 ./target/release/slive rooms   douyin --limit 20
+./target/release/slive rooms   kuaishou --limit 20
+./target/release/slive info    https://live.acfun.cn/live/173620
 ./target/release/slive info    https://live.douyin.com/80126552431 --cookie-file /path/to/douyin.cookie
 ./target/release/slive help
 ```
@@ -45,6 +47,28 @@ cargo build -p slive-cli --release
 `info` 输出房间详情、全部清晰度与直链（含请求头）；`danmaku` 持续打印弹幕，Ctrl-C 退出；
 `rooms` 输出推荐房间。`--cookie-file` 目前用于抖音，文件内容只作为 Cookie 请求头注入，
 不会写入日志。也可通过环境变量 `SLIVE_COOKIE_FILE` 传入路径，避免 Cookie 出现在进程参数中。
+
+## 平台状态（2026-11）
+
+- **B站 / 斗鱼 / 虎牙 / 抖音 / Twitch**：详情、取流、弹幕完整；Twitch 的分类 / 推荐 / 搜索见下节。
+- **快手**：8 个固定分类、首页推荐、搜索、房间详情、画质与取流已接入（房间页 `__INITIAL_STATE__`，匿名会话兜底）；区域列表（gameboard / non-gameboard）待接入。
+- **ACFUN**：房间详情、visitor 会话（5 分钟缓存）、`startPlay` 画质与取流已接入；分类 / 推荐 / 搜索待接入。
+- **微博**：推荐快照、昵称 / 场次搜索、单场详情、直播 FLV 与回放 HLS 已接入（搜索只筛官方推荐快照，非全站）。
+- **小红书**：分享页详情、受限判定、多 CDN 取流已接入；目录 / 关键词搜索需要浏览器访客会话（本 core 不提供）。
+- **YouTube**：列表 / 搜索 / 详情已接入；匿名取流被平台要求登录或 PO token，质量接口会如实报错。
+- **弹幕**：仍只覆盖 B站 / 斗鱼 / 虎牙 / 抖音 / Twitch。
+
+真机验证（mpv 解码）：Twitch 1080p60 H.264、ACFUN 1080p59 4Mbps、快手 1080p30 8Mbps、微博 720×1280 H.264、小红书 1440×2560 60fps，均为 H.264 + AAC。
+
+## Twitch 列表能力
+
+Twitch 的分类、首页推荐与搜索按 PureLive `live_core` 的 Twitch 实现重写（`crates/slive-core/src/platforms/twitch/{catalog,rooms,search}.rs`）；详情、取流、弹幕仍沿用旧 Dart core 的迁移结果。
+
+- `get_categories`：`SearchCategoryTags` + `BrowsePage_AllDirectories`，中文名称（缺中文名时再发一次英文请求补），目录 slug 作为 `LiveSubCategory.id` 供 `get_category_rooms` 使用；
+- `get_recommend_rooms` / `get_category_rooms`：全站 `streams` raw query / `DirectoryPage_Game`，按 cursor 抓块后存成句柄级快照，再按 `page` 切片；
+- `search_rooms` / `search_anchors`：`SearchResultsPage_SearchResults`，沿 CHANNEL cursor 翻页；前者只给在播频道，后者含未开播（`live_status` 标记）。
+
+列表请求用 `Accept-Language: zh-CN`，详情 / 取流链路保持 en-US；匿名客户端在后续页被要求 integrity token 时列表安静收尾。离线契约见 `crates/slive-core/tests/ac_twitch_lists.rs`。
 
 ## 重跑 codegen
 

@@ -8,14 +8,21 @@
 //! **不手写 accept-encoding**：reqwest 已启用 gzip/brotli 解码器，手写声明可能与服务端
 //! 实际编码不匹配（与斗鱼模块同口径，见 `douyu/header.rs`）。
 //! **无 cookie / 无 token**：Twitch 匿名只读链路不需要凭证（对齐 Dart 注释「no token / no cookie」）。
+//!
+//! 详情 / 取流沿用旧链路的 en-US；PureLive 版列表能力用 zh-CN 拿中文分类名，
+//! 个别标签再用一次 en-US 请求补英文名，见 [`super::catalog`]。
 
 use super::site::TwitchSite;
 
 /// 站点默认 UA（对齐 `twitch_site.dart:20-21`）。
 pub const TWITCH_USER_AGENT: &str =
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36";
-/// 语言协商（对齐 `twitch_site.dart:28`）。
-pub const TWITCH_ACCEPT_LANGUAGE: &str = "en-US,en;q=0.9";
+/// 旧链路的语言协商（对齐 `twitch_site.dart:28`）。
+pub const TWITCH_ACCEPT_LANGUAGE: &str = TWITCH_ACCEPT_LANGUAGE_EN;
+/// 列表链路的语言协商：中文分类名 / 目录名（PureLive `twitch_api.dart:95`）。
+pub const TWITCH_ACCEPT_LANGUAGE_ZH: &str = "zh-CN,zh;q=0.9,en;q=0.8";
+/// 英文名称回退请求（PureLive `twitch_api.dart:99`）。
+pub const TWITCH_ACCEPT_LANGUAGE_EN: &str = "en-US,en;q=0.9";
 /// 客户端声明（对齐 `twitch_site.dart:29`）。
 pub const TWITCH_ACCEPT: &str = "application/vnd.twitchtv.v5+json";
 /// GQL 公共 client-id（对齐 `twitch_site.dart:31`；Twitch Web 端公开值）。
@@ -31,12 +38,17 @@ pub const DEVICE_ID_SPAN: u64 = 1 << 32;
 
 /// GQL / m3u8 请求的标准头（含 `device-id`）。
 pub(crate) fn request_header(site: &TwitchSite) -> Vec<(String, String)> {
+    request_header_with_language(site, TWITCH_ACCEPT_LANGUAGE)
+}
+
+/// 列表能力用的请求头：与旧链路完全一致，只替换 `Accept-Language`。
+pub(crate) fn request_header_with_language(
+    site: &TwitchSite,
+    language: &str,
+) -> Vec<(String, String)> {
     vec![
         ("user-agent".to_string(), TWITCH_USER_AGENT.to_string()),
-        (
-            "accept-language".to_string(),
-            TWITCH_ACCEPT_LANGUAGE.to_string(),
-        ),
+        ("accept-language".to_string(), language.to_string()),
         ("accept".to_string(), TWITCH_ACCEPT.to_string()),
         ("client-id".to_string(), TWITCH_CLIENT_ID.to_string()),
         ("device-id".to_string(), site.device_id()),
@@ -60,7 +72,7 @@ mod tests {
         };
         assert_eq!(get("client-id"), TWITCH_CLIENT_ID);
         assert_eq!(get("accept"), TWITCH_ACCEPT);
-        assert_eq!(get("accept-language"), TWITCH_ACCEPT_LANGUAGE);
+        assert_eq!(get("accept-language"), TWITCH_ACCEPT_LANGUAGE_EN);
         assert_eq!(get("user-agent"), TWITCH_USER_AGENT);
         let device_id: u64 = get("device-id").parse().expect("device-id 应为数字");
         assert!(
@@ -71,5 +83,21 @@ mod tests {
             !header.iter().any(|(k, _)| k == "accept-encoding"),
             "不手写 accept-encoding（交给 reqwest）"
         );
+    }
+
+    #[test]
+    fn list_header_only_changes_language() {
+        let site = TwitchSite::new();
+        let base = request_header(&site);
+        let zh = request_header_with_language(&site, TWITCH_ACCEPT_LANGUAGE_ZH);
+        assert_eq!(base.len(), zh.len());
+        for ((bk, bv), (zk, zv)) in base.iter().zip(&zh) {
+            assert_eq!(bk, zk);
+            if bk == "accept-language" {
+                assert_eq!(zv, TWITCH_ACCEPT_LANGUAGE_ZH);
+            } else {
+                assert_eq!(bv, zv);
+            }
+        }
     }
 }

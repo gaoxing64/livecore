@@ -1,0 +1,106 @@
+{
+  "_meta": {
+    "kind": "kuaishou-list-responses",
+    "synthetic": true,
+    "source": "字段形状取自 2026-11 快手 Web 实测：home/list 三层分组 + search/author 作者列表"
+  },
+  "home_list": {
+    "data": {
+      "list": [
+        {
+          "labelId": 2,
+          "gameLiveInfo": [
+            {
+              "subLabelName": "直播中",
+              "liveInfo": [
+                {
+                  "id": "XT8F1KPOf0c",
+                  "caption": "测试直播标题 1",
+                  "author": {
+                    "id": "3xauthor1",
+                    "name": "主播 A",
+                    "avatar": "https://cdn/a.png",
+                    "description": "简介 A"
+                  },
+                  "poster": "https://cdn/p1.jpg",
+                  "watchingCount": "1 万+",
+                  "playUrls": [
+                    {
+                      "adaptationSet": {
+                        "representation": [
+                          {
+                            "id": 0,
+                            "level": 30,
+                            "url": "https://cdn/sd.flv",
+                            "name": "高清",
+                            "hidden": false
+                          },
+                          {
+                            "id": 1,
+                            "level": 70,
+                            "url": "https://cdn/fhd.flv",
+                            "name": "蓝光 4M",
+                            "hidden": false
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "ABC123XYZ",
+                  "caption": "测试直播标题 2",
+                  "author": { "id": "3xauthor2", "name": "主播 B" },
+                  "poster": "https://cdn/p2.jpg",
+                  "watchingCount": "5000",
+                  "playUrls": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "search_author": {
+    "data": {
+      "type": "authors",
+      "result": 1,
+      "list": [
+        { "id": "USR001", "name": "搜索主播", "avatar": "https://cdn/s.png", "living": true },
+        { "id": "USR002", "name": "离线主播", "living": false }
+      ]
+    }
+  },
+  "category_areas": {
+    "data": {
+      "hasMore": false,
+      "list": [
+        { "id": "22008", "name": "和平精英", "poster": "https://cdn/a.webp", "iconUrl": "https://cdn/b.png" },
+        { "id": "22484", "name": "暗区突围", "poster": "https://cdn/c.webp" }
+      ]
+    }
+  },
+  "area_rooms": {
+    "data": {
+      "hasMore": true,
+      "cursor": "cur1",
+      "list": [
+        {
+          "id": "X1",
+          "caption": "区域直播 1",
+          "author": { "id": "3xarea1", "name": "区域主播" },
+          "poster": "https://cdn/p.webp",
+          "watchingCount": "2万"
+        },
+        {
+          "id": "X2",
+          "caption": "区域直播 2",
+          "author": { "id": "3xarea2", "name": "区域主播 2" },
+          "poster": "https://cdn/q.webp",
+          "watchingCount": "5"
+        }
+      ]
+    }
+  }
+}

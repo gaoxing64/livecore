@@ -534,29 +534,14 @@ async fn play_urls_rejects_empty_quality_data() {
     assert!(matches!(err, SliveError::InvalidInput(_)), "实际 {err:?}");
 }
 
-// ------------------------------------------------------------------ 未实现能力
+// ------------------------------------------------------------------ 仍未实现的能力
+
+// 分类 / 推荐 / 搜索已按 PureLive 的 Twitch 实现重写，契约见 `ac_twitch_lists.rs`。
 
 #[tokio::test]
-async fn unsupported_capabilities_match_dart_semantics() {
+async fn account_capabilities_still_match_dart_semantics() {
     let h = harness();
 
-    // 恒空（Dart:67-70 / :73-77 / :282-285）
-    assert!(h.site.get_categories().await.expect("分类恒空").is_empty());
-    let rooms = h
-        .site
-        .get_category_rooms(
-            slive_core::models::LiveSubCategory {
-                id: "x".into(),
-                name: "x".into(),
-                parent_id: String::new(),
-                pic: None,
-            },
-            1,
-            Some(20),
-        )
-        .await
-        .expect("分类房间恒空");
-    assert!(!rooms.has_more && rooms.items.is_empty());
     assert!(h
         .site
         .get_super_chat_messages("alice".to_string())
@@ -564,9 +549,8 @@ async fn unsupported_capabilities_match_dart_semantics() {
         .expect("SC 恒空")
         .is_empty());
 
-    // 恒报错（Dart:202-204 / :293-319 的 UnimplementedError -> InvalidInput）
+    // 账号 / 二维码链路仍是匿名未实现（Dart:298-319 的 UnimplementedError -> InvalidInput）。
     for err in [
-        h.site.get_recommend_rooms(1, None).await.err(),
         h.site.set_site_attrs("{}").err(),
         h.site.get_qr_code().await.err(),
         h.site.get_qr_poll_result("k".to_string()).await.err(),
@@ -580,24 +564,7 @@ async fn unsupported_capabilities_match_dart_semantics() {
             "未实现应为 InvalidInput，实际 {err:?}"
         );
     }
-    assert_eq!(h.gql.requests().len(), 0, "不支持的能力不发请求");
-}
-
-#[tokio::test]
-async fn search_reports_api_error_with_dart_message() {
-    let h = harness();
-    for err in [
-        h.site.search_rooms("k".to_string(), 1).await.err(),
-        h.site.search_anchors("k".to_string(), 1).await.err(),
-    ] {
-        match err.expect("搜索必须报错") {
-            SliveError::Api { code, message } => {
-                assert_eq!(code, -1);
-                assert!(message.contains("twitch暂不支持搜索"), "实际 {message}");
-            }
-            other => panic!("期望 Api(-1)，实际 {other:?}"),
-        }
-    }
+    assert_eq!(h.gql.requests().len(), 0, "这些能力不发请求");
 }
 
 // ------------------------------------------------------------------ 站点属性 / 夹具自检

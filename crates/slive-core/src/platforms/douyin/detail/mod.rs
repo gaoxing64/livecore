@@ -83,7 +83,7 @@ fn has_origin_quality(site: &DouyinSite, detail: &LiveRoomDetail) -> bool {
 ///
 /// 真正的 4 档房间（有合法 `stream_data` 但只有 ld/sd/hd/uhd）不满足任一条件，
 /// 因此不会为了补一档不存在的画质而多打请求。
-fn ladder_is_incomplete(site: &DouyinSite, detail: &LiveRoomDetail) -> bool {
+fn ladder_is_incomplete(_site: &DouyinSite, detail: &LiveRoomDetail) -> bool {
     let Some(raw) = detail.data.as_deref() else {
         return false;
     };

@@ -1,4 +1,4 @@
-//! 统一站点门面：五个平台的 `*Site` 有同构方法集，这里收敛为单 trait + 工厂，
+//! 统一站点门面：各平台的 `*Site` 有同构方法集，这里收敛为单 trait + 工厂，
 //! 供 CLI / FRB 桥 / C ABI 复用（只转发，零协议逻辑）。
 
 use async_trait::async_trait;
@@ -18,6 +18,11 @@ pub enum Platform {
     Huya = 2,
     Douyin = 3,
     Twitch = 4,
+    Kuaishou = 5,
+    Acfun = 6,
+    Weibo = 7,
+    Xiaohongshu = 8,
+    YouTube = 9,
 }
 
 impl Platform {
@@ -29,6 +34,11 @@ impl Platform {
             Platform::Huya => "虎牙直播",
             Platform::Douyin => "抖音直播",
             Platform::Twitch => "Twitch",
+            Platform::Kuaishou => "快手",
+            Platform::Acfun => "ACFUN",
+            Platform::Weibo => "微博直播",
+            Platform::Xiaohongshu => "小红书直播",
+            Platform::YouTube => "YouTube Live",
         }
     }
 
@@ -40,12 +50,17 @@ impl Platform {
             2 => Some(Platform::Huya),
             3 => Some(Platform::Douyin),
             4 => Some(Platform::Twitch),
+            5 => Some(Platform::Kuaishou),
+            6 => Some(Platform::Acfun),
+            7 => Some(Platform::Weibo),
+            8 => Some(Platform::Xiaohongshu),
+            9 => Some(Platform::YouTube),
             _ => None,
         }
     }
 }
 
-/// 五平台站点的统一视图。
+/// 平台站点的统一视图。
 ///
 /// 只做转发，零协议逻辑。平台特有方法（虎牙子分类、斗鱼 Cookie 刷新）
 /// 仍留在各具体类型上，不进本 trait —— 保证对象安全与工厂返回类型稳定。
@@ -93,6 +108,11 @@ pub fn create_site(platform: Platform) -> Box<dyn LiveSite> {
         Platform::Huya => Box::new(crate::platforms::huya::HuyaSite::new()),
         Platform::Douyin => Box::new(crate::platforms::douyin::DouyinSite::new()),
         Platform::Twitch => Box::new(crate::platforms::twitch::TwitchSite::new()),
+        Platform::Kuaishou => Box::new(crate::platforms::kuaishou::KuaishouSite::new()),
+        Platform::Acfun => Box::new(crate::platforms::acfun::AcfunSite::new()),
+        Platform::Weibo => Box::new(crate::platforms::weibo::WeiboSite::new()),
+        Platform::Xiaohongshu => Box::new(crate::platforms::xiaohongshu::XiaohongshuSite::new()),
+        Platform::YouTube => Box::new(crate::platforms::youtube::YouTubeSite::new()),
     }
 }
 
@@ -104,6 +124,11 @@ pub fn all_platforms() -> &'static [Platform] {
         Platform::Huya,
         Platform::Douyin,
         Platform::Twitch,
+        Platform::Kuaishou,
+        Platform::Acfun,
+        Platform::Weibo,
+        Platform::Xiaohongshu,
+        Platform::YouTube,
     ]
 }
 
@@ -123,12 +148,12 @@ mod tests {
         for &p in all_platforms() {
             assert_eq!(Platform::from_i32(p as i32), Some(p));
         }
-        assert_eq!(Platform::from_i32(5), None);
+        assert_eq!(Platform::from_i32(10), None);
         assert_eq!(Platform::from_i32(-1), None);
     }
 
     #[test]
-    fn factory_builds_all_five_sites() {
+    fn factory_builds_all_sites() {
         for &p in all_platforms() {
             let site = create_site(p);
             assert!(!site.id().is_empty(), "{p:?} 的 id 不得为空");

@@ -290,11 +290,17 @@ pub async fn fetch(http: Arc<dyn HttpTransport>) -> DouyinEmoticonTable {
     if let Some(table) = cached_table() {
         return table;
     }
-    fetch_uncached(http).await
+    fetch_with(http, true).await
 }
 
 /// 绕过缓存的真实拉取（缓存命中 / 测试直达都用它下面这一层）。
+/// 不写全局缓存：写入只发生在 [`fetch`] 的成功路径，测试之间不会互相污染。
+#[cfg(test)]
 async fn fetch_uncached(http: Arc<dyn HttpTransport>) -> DouyinEmoticonTable {
+    fetch_with(http, false).await
+}
+
+async fn fetch_with(http: Arc<dyn HttpTransport>, store: bool) -> DouyinEmoticonTable {
     let request = HttpRequest {
         url: EMOJI_LIST_URL.to_string(),
         query: Vec::new(),
@@ -313,7 +319,9 @@ async fn fetch_uncached(http: Arc<dyn HttpTransport>) -> DouyinEmoticonTable {
                 Some(dynamic) => {
                     // 动态表覆盖同名静态项；静态表独有、动态表漏发的码仍可解析。
                     table.extend(dynamic);
-                    store_cache(&table);
+                    if store {
+                        store_cache(&table);
+                    }
                     log::info!("[douyin-danmaku] 已加载 {} 个标准表情", table.len());
                 }
                 None => log::warn!("[douyin-danmaku] 表情表结构不符，回退内置静态表"),

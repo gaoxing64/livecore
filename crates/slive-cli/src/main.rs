@@ -19,7 +19,8 @@ slive —— Simple Live 命令行工具
 用法:
   slive info <URL> [-q <清晰度>] [--all]   获取房间信息与播放直链
   slive danmaku <URL> [--no-color]         持续输出弹幕（Ctrl-C 退出）
-  slive rooms <平台> [--limit <数量>]       获取推荐直播间
+  slive search <平台> <关键词> [--limit <数量>]  搜索主播\n  slive rooms <平台> [--limit <数量>] [--category <区域>]
+                                           获取推荐 / 某区域直播间
   slive help                               显示本帮助
 
 支持站点:
@@ -70,7 +71,7 @@ async fn dispatch(argv: &[String]) -> Result<(), String> {
             print!("{HELP}");
             return Ok(());
         }
-        "info" | "i" | "danmaku" | "d" | "rooms" => {}
+        "info" | "i" | "danmaku" | "d" | "rooms" | "search" | "s" => {}
         other => return Err(format!("未知命令「{other}」")),
     }
 
@@ -84,6 +85,7 @@ async fn dispatch(argv: &[String]) -> Result<(), String> {
     let mut cookie_file: Option<String> = None;
     let mut show_emoticons = false;
     let mut limit = 20usize;
+    let mut category: Option<String> = None;
 
     let mut index = 1;
     while index < argv.len() {
@@ -120,6 +122,10 @@ async fn dispatch(argv: &[String]) -> Result<(), String> {
                     return Err("`--limit` 需要正整数".to_string());
                 }
             }
+            "--category" => {
+                index += 1;
+                category = Some(argv.get(index).ok_or("`--category` 缺少参数")?.to_string());
+            }
             "--no-color" => color = false,
             "--emoticons" => show_emoticons = true,
             "-h" | "--help" => {
@@ -139,12 +145,24 @@ async fn dispatch(argv: &[String]) -> Result<(), String> {
     // 显式 `--cookie-file` 仍对非抖音报错（用户当次就能看见，属于明确用法错误）。
     let env_cookie_file = std::env::var("SLIVE_COOKIE_FILE").ok();
 
+    if command == "search" {
+        return search(
+            positional.first().copied(),
+            positional.get(1).copied(),
+            limit,
+            cookie_file.as_deref(),
+            env_cookie_file.as_deref(),
+        )
+        .await;
+    }
+
     if command == "rooms" {
         return rooms(
             positional.first().copied(),
             limit,
             cookie_file.as_deref(),
             env_cookie_file.as_deref(),
+            category.as_deref(),
         )
         .await;
     }
@@ -348,35 +366,87 @@ async fn info(
 }
 
 /// 输出推荐直播间，每行 `room_id<TAB>online<TAB>主播<TAB>标题`。
+fn parse_platform(raw: &str) -> Result<Platform, String> {
+    match raw.trim().to_ascii_lowercase().as_str() {
+        "douyin" | "dy" | "抖音" => Ok(Platform::Douyin),
+        "bilibili" | "bili" | "b站" => Ok(Platform::Bilibili),
+        "douyu" | "斗鱼" => Ok(Platform::Douyu),
+        "huya" | "虎牙" => Ok(Platform::Huya),
+        "twitch" => Ok(Platform::Twitch),
+        "kuaishou" | "ks" | "快手" => Ok(Platform::Kuaishou),
+        "acfun" | "a站" => Ok(Platform::Acfun),
+        "weibo" | "微博" => Ok(Platform::Weibo),
+        "xiaohongshu" | "xhs" | "小红书" => Ok(Platform::Xiaohongshu),
+        "youtube" | "yt" => Ok(Platform::YouTube),
+        other => Err(format!(
+            "未知平台「{other}」（可用：douyin/bilibili/douyu/huya/twitch/kuaishou/acfun/weibo/xiaohongshu/youtube）"
+        )),
+    }
+}
+
+async fn search(
+    platform: Option<&str>,
+    keyword: Option<&str>,
+    limit: usize,
+    cookie_file: Option<&str>,
+    env_cookie_file: Option<&str>,
+) -> Result<(), String> {
+    let platform = parse_platform(platform.unwrap_or("kuaishou"))?;
+    let keyword = keyword.ok_or("search 需要关键词")?.trim();
+    if keyword.is_empty() {
+        return Err("search 需要关键词".to_string());
+    }
+    let cookie_file = effective_cookie_file(platform, cookie_file, env_cookie_file);
+    let site = build_site(platform, cookie_file)?;
+    let result = site
+        .search_anchors(keyword.to_string(), 1)
+        .await
+        .map_err(|e| e.to_string())?;
+    for anchor in result.items.into_iter().take(limit) {
+        println!(
+            "{}\t{}\t{}\t{}",
+            anchor.room_id,
+            if anchor.live_status { "live" } else { "offline" },
+            anchor.user_name.replace(['\t', '\r', '\n'], " "),
+            anchor.avatar
+        );
+    }
+    Ok(())
+}
+
 async fn rooms(
     platform: Option<&str>,
     limit: usize,
     cookie_file: Option<&str>,
     env_cookie_file: Option<&str>,
+    category: Option<&str>,
 ) -> Result<(), String> {
-    let platform = match platform
-        .unwrap_or("douyin")
-        .trim()
-        .to_ascii_lowercase()
-        .as_str()
-    {
-        "douyin" | "dy" | "抖音" => Platform::Douyin,
-        "bilibili" | "bili" | "b站" => Platform::Bilibili,
-        "douyu" | "斗鱼" => Platform::Douyu,
-        "huya" | "虎牙" => Platform::Huya,
-        "twitch" => Platform::Twitch,
-        other => {
-            return Err(format!(
-                "未知平台「{other}」（可用：douyin/bilibili/douyu/huya/twitch）"
-            ))
-        }
-    };
+    let platform = parse_platform(platform.unwrap_or("douyin"))?;
     let cookie_file = effective_cookie_file(platform, cookie_file, env_cookie_file);
     let site = build_site(platform, cookie_file)?;
-    let result = site
-        .get_recommend_rooms(1, Some(limit.min(i32::MAX as usize) as i32))
-        .await
-        .map_err(|e| e.to_string())?;
+    // `--category <id>`：先按 id 在分类树里找区域（区域 id 也可直接给），再取该区域房间。
+    let result = match category {
+        Some(category) => {
+            let categories = site.get_categories().await.map_err(|e| e.to_string())?;
+            let found = categories
+                .iter()
+                .flat_map(|parent| parent.children.iter())
+                .find(|area| {
+                    area.id == category
+                        || area.name == category
+                        || format!("{}-{}", area.parent_id, area.id) == category
+                })
+                .cloned()
+                .ok_or_else(|| format!("找不到分类「{category}」"))?;
+            site.get_category_rooms(found, 1, Some(limit.min(i32::MAX as usize) as i32))
+                .await
+                .map_err(|e| e.to_string())?
+        }
+        None => site
+            .get_recommend_rooms(1, Some(limit.min(i32::MAX as usize) as i32))
+            .await
+            .map_err(|e| e.to_string())?,
+    };
     for room in result.items.into_iter().take(limit) {
         println!(
             "{}\t{}\t{}\t{}",

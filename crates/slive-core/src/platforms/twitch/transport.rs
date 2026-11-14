@@ -5,11 +5,11 @@
 //! 而共享的 [`crate::http::HttpTransport`] 只暴露 `get`（B站全 GET）。为避免在多平台
 //! 并行期间改动共享 `http.rs`，这里在 Twitch 模块内自建一条**向下依赖**的 POST 通道：
 //! - 生产：[`ReqwestTwitchPost`]（复用 `crate::http::build_client` 的共享 rustls Client 口径）
-//! - 测试：[`MockTwitchPost`]（按 URL 子串返回夹具 + 记录请求，供离线用例断言）
+//! - 测试：[`MockTwitchPost`]（按 URL + 请求体标记返回夹具 + 记录请求，供离线用例断言）
 //!
 //! 纪律：**不自动重试**；业务错误由上层判定并抛错。
 
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
 
@@ -101,11 +101,15 @@ fn truncate(body: &str) -> String {
     }
 }
 
-/// 可脚本化的 mock POST 通道：按 URL 子串匹配，**记录全部请求**（含 body，供 golden 断言）。
+/// 可脚本化的 mock POST 通道，**记录全部请求**（含 body，供 golden 断言）。
+///
+/// 所有 GQL 请求共用一个 URL，所以除了 URL 子串，还可以用 `body_marker`
+/// （通常是 `operationName`）把不同 operation 路由到不同夹具。带标记的夹具
+/// 优先于通用夹具，避免注册顺序影响命中结果。
 ///
 /// 放在平台模块内而非共享 `testing.rs`，是为了多平台并行期间不改共享文件。
 pub struct MockTwitchPost {
-    stubs: Mutex<Vec<(String, StubOutcome)>>,
+    stubs: Mutex<Vec<(String, String, StubOutcome)>>,
     requests: Mutex<Vec<PostRequest>>,
 }
 
@@ -118,6 +122,12 @@ pub struct MockTwitchPost {
 enum StubOutcome {
     /// 200 + 文本。
     Text(String),
+    /// 同一 operation 的多次请求依次返回不同夹具（cursor 分页测试用），
+    /// 用尽后重复最后一条。
+    Sequence {
+        bodies: Vec<String>,
+        cursor: Arc<Mutex<usize>>,
+    },
     /// HTTP 错误状态。
     Http(u16),
     /// 传输层失败。
@@ -128,6 +138,15 @@ impl StubOutcome {
     fn into_result(self) -> Result<HttpReply, SliveError> {
         match self {
             StubOutcome::Text(text) => Ok(reply(&text)),
+            StubOutcome::Sequence { bodies, cursor } => {
+                if bodies.is_empty() {
+                    return Err(SliveError::network("空的顺序夹具"));
+                }
+                let mut index = cursor.lock().expect("sequence poisoned");
+                let body = &bodies[(*index).min(bodies.len() - 1)];
+                *index += 1;
+                Ok(reply(body))
+            }
             StubOutcome::Http(status) => Err(SliveError::Http {
                 status,
                 body: String::new(),
@@ -152,26 +171,44 @@ impl MockTwitchPost {
         }
     }
 
-    /// 注册一条 200 + 文本响应夹具（`key` 为 URL 子串）。
+    /// 注册一条 200 + 文本响应夹具（`key` 为 URL 子串，匹配任意请求体）。
     pub fn stub(&self, key: &str, body: &str) {
-        self.push(key, StubOutcome::Text(body.to_string()));
+        self.push(key, "", StubOutcome::Text(body.to_string()));
+    }
+
+    /// 注册一条只在请求体含 `body_marker` 时命中的响应夹具。
+    pub fn stub_body(&self, key: &str, body_marker: &str, body: &str) {
+        self.push(key, body_marker, StubOutcome::Text(body.to_string()));
+    }
+
+    /// 注册同一 operation 的多条响应，按请求顺序依次返回（用尽后重复最后一条）。
+    pub fn stub_sequence(&self, key: &str, body_marker: &str, bodies: &[&str]) {
+        self.push(
+            key,
+            body_marker,
+            StubOutcome::Sequence {
+                bodies: bodies.iter().map(|body| body.to_string()).collect(),
+                cursor: Arc::new(Mutex::new(0)),
+            },
+        );
     }
 
     /// 注册一条 HTTP 错误夹具。
     pub fn stub_http_error(&self, key: &str, status: u16) {
-        self.push(key, StubOutcome::Http(status));
+        self.push(key, "", StubOutcome::Http(status));
     }
 
     /// 注册一条传输层失败夹具。
     pub fn stub_network_error(&self, key: &str, message: &str) {
-        self.push(key, StubOutcome::Network(message.to_string()));
+        self.push(key, "", StubOutcome::Network(message.to_string()));
     }
 
-    fn push(&self, key: &str, outcome: StubOutcome) {
-        self.stubs
-            .lock()
-            .expect("stubs poisoned")
-            .push((key.to_string(), outcome));
+    fn push(&self, key: &str, body_marker: &str, outcome: StubOutcome) {
+        self.stubs.lock().expect("stubs poisoned").push((
+            key.to_string(),
+            body_marker.to_string(),
+            outcome,
+        ));
     }
 
     /// 已记录的全部请求（克隆）。
@@ -207,10 +244,17 @@ impl TwitchPost for MockTwitchPost {
             .push(request.clone());
         let matched = {
             let stubs = self.stubs.lock().expect("stubs poisoned");
-            stubs
-                .iter()
-                .find(|(key, _)| request.url.contains(key.as_str()))
-                .map(|(_, outcome)| outcome.clone())
+            let url_matches = || {
+                stubs
+                    .iter()
+                    .filter(|(url_key, _, _)| request.url.contains(url_key.as_str()))
+            };
+            url_matches()
+                .find(|(_, marker, _)| {
+                    !marker.is_empty() && request.body.contains(marker.as_str())
+                })
+                .or_else(|| url_matches().find(|(_, marker, _)| marker.is_empty()))
+                .map(|(_, _, outcome)| outcome.clone())
         };
         match matched {
             None => Err(SliveError::network(format!(
@@ -242,6 +286,47 @@ mod tests {
         assert_eq!(got.text, r#"[{"data":{}}]"#);
         assert_eq!(mock.request_count("gql.twitch.tv"), 1);
         assert!(mock.requests()[0].body.contains("ChannelShell"));
+    }
+
+    #[tokio::test]
+    async fn body_marker_routes_operations_regardless_of_registration_order() {
+        let mock = MockTwitchPost::new();
+        mock.stub("gql.twitch.tv", "generic");
+        mock.stub_body("gql.twitch.tv", "DirectoryPage_Game", "game");
+        mock.stub_body("gql.twitch.tv", "SearchCategoryTags", "tags");
+        async fn send(mock: &MockTwitchPost, body: &str) -> String {
+            mock.post_json(&PostRequest {
+                url: "https://gql.twitch.tv/gql".to_string(),
+                body: body.to_string(),
+                headers: vec![],
+            })
+            .await
+            .expect("命中夹具")
+            .text
+        }
+        assert_eq!(send(&mock, "SearchCategoryTags").await, "tags");
+        assert_eq!(send(&mock, "DirectoryPage_Game").await, "game");
+        assert_eq!(send(&mock, "something else").await, "generic");
+        assert_eq!(mock.request_count("gql.twitch.tv"), 3);
+    }
+
+    #[tokio::test]
+    async fn sequence_returns_bodies_in_order_and_repeats_the_last() {
+        let mock = MockTwitchPost::new();
+        mock.stub_sequence("gql.twitch.tv", "DirectoryPage_Game", &["p1", "p2"]);
+        let send = || async {
+            mock.post_json(&PostRequest {
+                url: "https://gql.twitch.tv/gql".to_string(),
+                body: "DirectoryPage_Game".to_string(),
+                headers: vec![],
+            })
+            .await
+            .expect("命中夹具")
+            .text
+        };
+        assert_eq!(send().await, "p1");
+        assert_eq!(send().await, "p2");
+        assert_eq!(send().await, "p2");
     }
 
     #[tokio::test]

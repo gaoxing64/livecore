@@ -31,6 +31,9 @@ pub fn spawn(
         Platform::Huya => spawn_huya(args, stop, on_item),
         Platform::Douyin => spawn_douyin(args, stop, on_item),
         Platform::Twitch => spawn_twitch(args, stop, on_item),
+        Platform::Kuaishou | Platform::Acfun | Platform::Weibo | Platform::Xiaohongshu | Platform::YouTube => {
+            Err(SliveError::invalid_input("该平台弹幕暂未实现"))
+        }
     }
 }
 

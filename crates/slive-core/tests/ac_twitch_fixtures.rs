@@ -5,8 +5,9 @@
 //! 骨架已于 2026-10-17 合并前评审移除（理由已失真且被取代）。
 //! 本文件**不 import 平台函数**；golden 与 HTTP quirks 见 `ac_twitch_golden.rs`。
 //!
-//! 纪律：**Dart 现状即「不支持」的能力，迁移必须同样不支持**（见
-//! `_meta.unsupported_by_dart`）——顺手实现会破坏 AC-30「回归为零」。
+//! `_meta.unsupported_by_dart` 记录的是**旧版 Dart core 的迁移基线**：当时这些能力
+//! 必须保持不支持以满足 AC-30「回归为零」。分类 / 推荐 / 搜索现按 PureLive 的
+//! Twitch 实现重写（契约见 `ac_twitch_lists.rs`），该元数据仅作历史留痕保留。
 
 mod fxcommon;
 
@@ -61,7 +62,7 @@ fn ws_frames_meta_and_hex_are_consistent() {
 
 #[test]
 fn unsupported_capabilities_are_documented_not_silently_dropped() {
-    // 「Dart 不支持」必须留痕，否则实现者会以为漏了夹具而去实现它。
+    // 旧迁移基线的「不支持」判定必须留痕，避免后人误以为夹具漏了。
     let un = &fxcommon::http_samples(PLATFORM)["_meta"]["unsupported_by_dart"];
     for cap in [
         "get_categories",

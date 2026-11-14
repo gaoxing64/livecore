@@ -1,15 +1,18 @@
-//! Twitch 站点句柄：句柄级状态 + 15 方法编排（`site.rs` 仅编排，能力下沉到各模块）。
+//! Twitch 站点句柄：句柄级状态 + 16 方法编排（`site.rs` 仅编排，能力下沉到各模块）。
 //!
 //! 状态：
 //! - `device_id`：Dart 每次请求用 `Random()` 重新生成（`getDeviceId()`）；Rust 落为
 //!   **句柄级**（同一会话稳定），值由注入的 [`TimeSource`] 派生 —— 请求头集合与 Dart 一致，
 //!   属行为不变（`13-spec.md §10` 已有同类裁决：wbi keys 静态 -> 句柄级）；
+//! - 列表快照 / 搜索 cursor：PureLive 的列表接口用 cursor 翻页，而 core 契约是 `page`，
+//!   故把快照与 cursor 落在句柄级（对照 `twitch_site.dart` 的 `_snapshots` / `_cursors`）；
 //! - 注入的 [`HttpTransport`]（usher m3u8 是 GET）、[`TwitchPost`]（GQL 是 POST JSON）与
 //!   [`TimeSource`] 使离线夹具与确定性断言可行。
 //!
-//! 依赖方向：本模块只向下依赖 `super::{detail,play,unsupported,transport,header}` 与
-//! `crate::{error,http,models,time}`。
+//! 依赖方向：本模块只向下依赖 `super::{catalog,detail,play,rooms,search,unsupported,transport,header}`
+//! 与 `crate::{error,http,models,time}`。
 
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 use serde_json::Value;
@@ -22,13 +25,19 @@ use crate::models::{
 };
 use crate::time::{SystemClock, TimeSource};
 
-use super::header::{request_header, DEVICE_ID_BASE, DEVICE_ID_SPAN, TWITCH_GQL_URL};
+use super::header::{
+    request_header, request_header_with_language, DEVICE_ID_BASE, DEVICE_ID_SPAN,
+    TWITCH_ACCEPT_LANGUAGE, TWITCH_GQL_URL,
+};
+use super::rooms::{ListSnapshot, SNAPSHOT_LIMIT};
 use super::transport::{PostRequest, ReqwestTwitchPost, TwitchPost};
 
 /// 句柄级可变状态。
 #[derive(Default)]
 struct SiteState {
     device_id: String,
+    snapshots: HashMap<String, ListSnapshot>,
+    cursors: HashMap<String, String>,
 }
 
 /// Twitch 站点实例。
@@ -120,8 +129,17 @@ impl TwitchSite {
         self.state.lock().unwrap_or_else(|e| e.into_inner())
     }
 
-    /// 携带标准头 POST 一条 GQL 请求并解析 JSON。
+    /// 携带标准头 POST 一条 GQL 请求并解析 JSON（旧链路的 en-US）。
     pub(crate) async fn post_gql(&self, body: &Value) -> Result<Value, SliveError> {
+        self.post_gql_with_language(body, TWITCH_ACCEPT_LANGUAGE).await
+    }
+
+    /// 指定 `Accept-Language` 的 GQL POST（列表能力用 zh-CN 拿中文名称）。
+    pub(crate) async fn post_gql_with_language(
+        &self,
+        body: &Value,
+        language: &str,
+    ) -> Result<Value, SliveError> {
         let payload =
             serde_json::to_string(body).map_err(|e| SliveError::decode(format!("序列化 GQL 请求失败: {e}")))?;
         let reply = self
@@ -129,10 +147,52 @@ impl TwitchSite {
             .post_json(&PostRequest {
                 url: TWITCH_GQL_URL.to_string(),
                 body: payload,
-                headers: request_header(self),
+                headers: request_header_with_language(self, language),
             })
             .await?;
         reply.json()
+    }
+
+    /// 取列表快照（克隆，避免跨 await 持有锁）。
+    pub(crate) fn list_snapshot(&self, key: &str) -> Option<ListSnapshot> {
+        self.lock().snapshots.get(key).cloned()
+    }
+
+    /// 写回列表快照，超过上限时丢弃最旧的一份（对照 PureLive `_snapshotLimit`）。
+    pub(crate) fn save_snapshot(&self, key: &str, snapshot: ListSnapshot) {
+        let mut state = self.lock();
+        state.snapshots.insert(key.to_string(), snapshot);
+        if state.snapshots.len() > SNAPSHOT_LIMIT {
+            let oldest = state
+                .snapshots
+                .iter()
+                .min_by_key(|(_, snapshot)| snapshot.fetched_at)
+                .map(|(key, _)| key.clone());
+            if let Some(oldest) = oldest {
+                state.snapshots.remove(&oldest);
+            }
+        }
+    }
+
+    /// 搜索翻页 cursor（对照 PureLive `_cursors`）。
+    pub(crate) fn cursor_for(&self, key: &str) -> Option<String> {
+        self.lock().cursors.get(key).cloned()
+    }
+
+    /// 记住 / 清除下一页 cursor（对照 PureLive `_remember`）。
+    pub(crate) fn remember_cursor(&self, key: &str, cursor: Option<&str>) {
+        const CURSOR_LIMIT: usize = 256;
+        let mut state = self.lock();
+        state.cursors.remove(key);
+        if let Some(cursor) = cursor {
+            state.cursors.insert(key.to_string(), cursor.to_string());
+        }
+        if state.cursors.len() > CURSOR_LIMIT {
+            let oldest = state.cursors.keys().next().cloned();
+            if let Some(oldest) = oldest {
+                state.cursors.remove(&oldest);
+            }
+        }
     }
 
     /// 带标准头发起 GET 并返回响应文本（usher m3u8 用）。
@@ -145,38 +205,38 @@ impl TwitchSite {
         Ok(self.http().get(&request).await?.text)
     }
 
-    /// F-01 分类（Twitch 不做分类，恒空）。
+    /// F-01 分类：标签 + 标签下的目录（PureLive `twitch_site.dart:273-294`）。
     pub async fn get_categories(&self) -> Result<Vec<LiveCategory>, SliveError> {
-        super::unsupported::categories()
+        super::catalog::fetch(self).await
     }
 
-    /// F-02 分类下房间（恒空；`page_size` 仅为统一签名）。
+    /// F-02 分类下房间：`DirectoryPage_Game` + 快照分页。
     pub async fn get_category_rooms(
         &self,
-        _category: LiveSubCategory,
-        _page: i32,
-        _page_size: Option<i32>,
+        category: LiveSubCategory,
+        page: i32,
+        page_size: Option<i32>,
     ) -> Result<LiveCategoryResult, SliveError> {
-        super::unsupported::category_rooms()
+        super::rooms::fetch_category_rooms(self, &category, page, page_size).await
     }
 
-    /// F-03 推荐房间（Dart 未实现 -> 报错）。
+    /// F-03 首页推荐：全站最热直播 + 快照分页。
     pub async fn get_recommend_rooms(
         &self,
-        _page: i32,
-        _page_size: Option<i32>,
+        page: i32,
+        page_size: Option<i32>,
     ) -> Result<LiveCategoryResult, SliveError> {
-        super::unsupported::recommend_rooms()
+        super::rooms::fetch_recommend_rooms(self, page, page_size).await
     }
 
-    /// F-04 搜索房间（Dart 抛异常 -> `Api(-1)`）。
+    /// F-04 搜索房间：只返回在播频道。
     pub async fn search_rooms(&self, keyword: String, page: i32) -> Result<LiveSearchRoomResult, SliveError> {
-        super::unsupported::search_rooms(&keyword, page)
+        super::search::fetch_rooms(self, &keyword, page).await
     }
 
-    /// F-05 搜索主播（Dart 抛异常 -> `Api(-1)`）。
+    /// F-05 搜索主播：包含未开播频道。
     pub async fn search_anchors(&self, keyword: String, page: i32) -> Result<LiveSearchAnchorResult, SliveError> {
-        super::unsupported::search_anchors(&keyword, page)
+        super::search::fetch_anchors(self, &keyword, page).await
     }
 
     /// F-06 房间详情（`ChannelShell` + `StreamMetadata` 一次批量）。

@@ -24,6 +24,11 @@ public enum Platform
     Huya = 2,
     Douyin = 3,
     Twitch = 4,
+    Kuaishou = 5,
+    Acfun = 6,
+    Weibo = 7,
+    Xiaohongshu = 8,
+    YouTube = 9,
 }
 
 public static class Status

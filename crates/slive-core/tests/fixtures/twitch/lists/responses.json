@@ -1,0 +1,1066 @@
+{
+  "_meta": {
+    "kind": "twitch-list-responses",
+    "synthetic": true,
+    "source": "字段形状取自 PureLive fixtures/twitch S01-tags / S01-dirs-1 / S02-game / S03-top / S04-search-p1，取值合成为便于断言的小样本",
+    "note": "供 ac_twitch_lists.rs 通过 MockTwitchPost.stub_sequence / stub_body 注入"
+  },
+  "tags_zh": {
+    "data": {
+      "searchCategoryTags": [
+        {
+          "id": "tag-1",
+          "tagName": "冒险游戏",
+          "localizedName": "冒险游戏",
+          "isLanguageTag": false,
+          "isAutomated": false,
+          "localizedDescription": "",
+          "__typename": "Tag",
+          "scope": "CATEGORY"
+        },
+        {
+          "id": "tag-2",
+          "tagName": "谈天说地",
+          "localizedName": "谈天说地",
+          "isLanguageTag": false,
+          "isAutomated": false,
+          "localizedDescription": "",
+          "__typename": "Tag",
+          "scope": "CATEGORY"
+        },
+        {
+          "id": "tag-3",
+          "tagName": "",
+          "localizedName": "",
+          "isLanguageTag": false,
+          "isAutomated": false,
+          "localizedDescription": "",
+          "__typename": "Tag",
+          "scope": "CATEGORY"
+        }
+      ]
+    },
+    "extensions": {
+      "durationMilliseconds": 9
+    }
+  },
+  "tags_en": {
+    "data": {
+      "searchCategoryTags": [
+        {
+          "id": "tag-1",
+          "tagName": "Adventure Game",
+          "localizedName": "Adventure Game",
+          "isLanguageTag": false,
+          "isAutomated": false,
+          "localizedDescription": "",
+          "__typename": "Tag",
+          "scope": "CATEGORY"
+        },
+        {
+          "id": "tag-2",
+          "tagName": "Just Chatting",
+          "localizedName": "Just Chatting",
+          "isLanguageTag": false,
+          "isAutomated": false,
+          "localizedDescription": "",
+          "__typename": "Tag",
+          "scope": "CATEGORY"
+        },
+        {
+          "id": "tag-3",
+          "tagName": "Gambling",
+          "localizedName": "Gambling",
+          "isLanguageTag": false,
+          "isAutomated": false,
+          "localizedDescription": "",
+          "__typename": "Tag",
+          "scope": "CATEGORY"
+        }
+      ]
+    },
+    "extensions": {}
+  },
+  "directories_p1": [
+    {
+      "data": {
+        "directoriesWithTags": {
+          "edges": [
+            {
+              "cursor": "dir-cur-1",
+              "trackingID": null,
+              "node": {
+                "id": "500001",
+                "slug": "game-1",
+                "displayName": "游戏1",
+                "name": "Game 1",
+                "avatarURL": "https://static-cdn.jtvnw.net/ttv-boxart/1-285x380.jpg",
+                "viewersCount": 1001,
+                "tags": [],
+                "__typename": "Game"
+              }
+            },
+            {
+              "cursor": "dir-cur-2",
+              "trackingID": null,
+              "node": {
+                "id": "500002",
+                "slug": "game-2",
+                "displayName": "游戏2",
+                "name": "Game 2",
+                "avatarURL": "https://static-cdn.jtvnw.net/ttv-boxart/2-285x380.jpg",
+                "viewersCount": 1002,
+                "tags": [],
+                "__typename": "Game"
+              }
+            },
+            {
+              "cursor": "dir-cur-3",
+              "trackingID": null,
+              "node": {
+                "id": "500003",
+                "slug": "game-3",
+                "displayName": "游戏3",
+                "name": "Game 3",
+                "avatarURL": "https://static-cdn.jtvnw.net/ttv-boxart/3-285x380.jpg",
+                "viewersCount": 1003,
+                "tags": [],
+                "__typename": "Game"
+              }
+            },
+            {
+              "cursor": "dir-cur-4",
+              "trackingID": null,
+              "node": {
+                "id": "500004",
+                "slug": "game-4",
+                "displayName": "游戏4",
+                "name": "Game 4",
+                "avatarURL": "https://static-cdn.jtvnw.net/ttv-boxart/4-285x380.jpg",
+                "viewersCount": 1004,
+                "tags": [],
+                "__typename": "Game"
+              }
+            },
+            {
+              "cursor": "dir-cur-5",
+              "trackingID": null,
+              "node": {
+                "id": "500005",
+                "slug": "game-5",
+                "displayName": "游戏5",
+                "name": "Game 5",
+                "avatarURL": "https://static-cdn.jtvnw.net/ttv-boxart/5-285x380.jpg",
+                "viewersCount": 1005,
+                "tags": [],
+                "__typename": "Game"
+              }
+            },
+            {
+              "cursor": "dir-cur-6",
+              "trackingID": null,
+              "node": {
+                "id": "500006",
+                "slug": "game-6",
+                "displayName": "游戏6",
+                "name": "Game 6",
+                "avatarURL": "https://static-cdn.jtvnw.net/ttv-boxart/6-285x380.jpg",
+                "viewersCount": 1006,
+                "tags": [],
+                "__typename": "Game"
+              }
+            },
+            {
+              "cursor": "dir-cur-7",
+              "trackingID": null,
+              "node": {
+                "id": "500007",
+                "slug": "game-7",
+                "displayName": "游戏7",
+                "name": "Game 7",
+                "avatarURL": "https://static-cdn.jtvnw.net/ttv-boxart/7-285x380.jpg",
+                "viewersCount": 1007,
+                "tags": [],
+                "__typename": "Game"
+              }
+            },
+            {
+              "cursor": "dir-cur-8",
+              "trackingID": null,
+              "node": {
+                "id": "500008",
+                "slug": "game-8",
+                "displayName": "游戏8",
+                "name": "Game 8",
+                "avatarURL": "https://static-cdn.jtvnw.net/ttv-boxart/8-285x380.jpg",
+                "viewersCount": 1008,
+                "tags": [],
+                "__typename": "Game"
+              }
+            },
+            {
+              "cursor": "dir-cur-9",
+              "trackingID": null,
+              "node": {
+                "id": "500009",
+                "slug": "game-9",
+                "displayName": "游戏9",
+                "name": "Game 9",
+                "avatarURL": "https://static-cdn.jtvnw.net/ttv-boxart/9-285x380.jpg",
+                "viewersCount": 1009,
+                "tags": [],
+                "__typename": "Game"
+              }
+            },
+            {
+              "cursor": "dir-cur-10",
+              "trackingID": null,
+              "node": {
+                "id": "500010",
+                "slug": "game-10",
+                "displayName": "游戏10",
+                "name": "Game 10",
+                "avatarURL": "https://static-cdn.jtvnw.net/ttv-boxart/10-285x380.jpg",
+                "viewersCount": 1010,
+                "tags": [],
+                "__typename": "Game"
+              }
+            },
+            {
+              "cursor": "dir-cur-11",
+              "trackingID": null,
+              "node": {
+                "id": "500011",
+                "slug": "game-11",
+                "displayName": "游戏11",
+                "name": "Game 11",
+                "avatarURL": "https://static-cdn.jtvnw.net/ttv-boxart/11-285x380.jpg",
+                "viewersCount": 1011,
+                "tags": [],
+                "__typename": "Game"
+              }
+            },
+            {
+              "cursor": "dir-cur-12",
+              "trackingID": null,
+              "node": {
+                "id": "500012",
+                "slug": "game-12",
+                "displayName": "游戏12",
+                "name": "Game 12",
+                "avatarURL": "https://static-cdn.jtvnw.net/ttv-boxart/12-285x380.jpg",
+                "viewersCount": 1012,
+                "tags": [],
+                "__typename": "Game"
+              }
+            },
+            {
+              "cursor": "dir-cur-13",
+              "trackingID": null,
+              "node": {
+                "id": "500013",
+                "slug": "game-13",
+                "displayName": "游戏13",
+                "name": "Game 13",
+                "avatarURL": "https://static-cdn.jtvnw.net/ttv-boxart/13-285x380.jpg",
+                "viewersCount": 1013,
+                "tags": [],
+                "__typename": "Game"
+              }
+            },
+            {
+              "cursor": "dir-cur-14",
+              "trackingID": null,
+              "node": {
+                "id": "500014",
+                "slug": "game-14",
+                "displayName": "游戏14",
+                "name": "Game 14",
+                "avatarURL": "https://static-cdn.jtvnw.net/ttv-boxart/14-285x380.jpg",
+                "viewersCount": 1014,
+                "tags": [],
+                "__typename": "Game"
+              }
+            },
+            {
+              "cursor": "dir-cur-15",
+              "trackingID": null,
+              "node": {
+                "id": "500015",
+                "slug": "game-15",
+                "displayName": "游戏15",
+                "name": "Game 15",
+                "avatarURL": "https://static-cdn.jtvnw.net/ttv-boxart/15-285x380.jpg",
+                "viewersCount": 1015,
+                "tags": [],
+                "__typename": "Game"
+              }
+            },
+            {
+              "cursor": "dir-cur-16",
+              "trackingID": null,
+              "node": {
+                "id": "500016",
+                "slug": "game-16",
+                "displayName": "游戏16",
+                "name": "Game 16",
+                "avatarURL": "https://static-cdn.jtvnw.net/ttv-boxart/16-285x380.jpg",
+                "viewersCount": 1016,
+                "tags": [],
+                "__typename": "Game"
+              }
+            },
+            {
+              "cursor": "dir-cur-17",
+              "trackingID": null,
+              "node": {
+                "id": "500017",
+                "slug": "game-17",
+                "displayName": "游戏17",
+                "name": "Game 17",
+                "avatarURL": "https://static-cdn.jtvnw.net/ttv-boxart/17-285x380.jpg",
+                "viewersCount": 1017,
+                "tags": [],
+                "__typename": "Game"
+              }
+            },
+            {
+              "cursor": "dir-cur-18",
+              "trackingID": null,
+              "node": {
+                "id": "500018",
+                "slug": "game-18",
+                "displayName": "游戏18",
+                "name": "Game 18",
+                "avatarURL": "https://static-cdn.jtvnw.net/ttv-boxart/18-285x380.jpg",
+                "viewersCount": 1018,
+                "tags": [],
+                "__typename": "Game"
+              }
+            },
+            {
+              "cursor": "dir-cur-19",
+              "trackingID": null,
+              "node": {
+                "id": "500019",
+                "slug": "game-19",
+                "displayName": "游戏19",
+                "name": "Game 19",
+                "avatarURL": "https://static-cdn.jtvnw.net/ttv-boxart/19-285x380.jpg",
+                "viewersCount": 1019,
+                "tags": [],
+                "__typename": "Game"
+              }
+            },
+            {
+              "cursor": "dir-cur-20",
+              "trackingID": null,
+              "node": {
+                "id": "500020",
+                "slug": "game-20",
+                "displayName": "游戏20",
+                "name": "Game 20",
+                "avatarURL": "https://static-cdn.jtvnw.net/ttv-boxart/20-285x380.jpg",
+                "viewersCount": 1020,
+                "tags": [],
+                "__typename": "Game"
+              }
+            },
+            {
+              "cursor": "dir-cur-21",
+              "trackingID": null,
+              "node": {
+                "id": "500021",
+                "slug": "game-21",
+                "displayName": "游戏21",
+                "name": "Game 21",
+                "avatarURL": "https://static-cdn.jtvnw.net/ttv-boxart/21-285x380.jpg",
+                "viewersCount": 1021,
+                "tags": [],
+                "__typename": "Game"
+              }
+            },
+            {
+              "cursor": "dir-cur-22",
+              "trackingID": null,
+              "node": {
+                "id": "500022",
+                "slug": "game-22",
+                "displayName": "游戏22",
+                "name": "Game 22",
+                "avatarURL": "https://static-cdn.jtvnw.net/ttv-boxart/22-285x380.jpg",
+                "viewersCount": 1022,
+                "tags": [],
+                "__typename": "Game"
+              }
+            },
+            {
+              "cursor": "dir-cur-23",
+              "trackingID": null,
+              "node": {
+                "id": "500023",
+                "slug": "game-23",
+                "displayName": "游戏23",
+                "name": "Game 23",
+                "avatarURL": "https://static-cdn.jtvnw.net/ttv-boxart/23-285x380.jpg",
+                "viewersCount": 1023,
+                "tags": [],
+                "__typename": "Game"
+              }
+            },
+            {
+              "cursor": "dir-cur-24",
+              "trackingID": null,
+              "node": {
+                "id": "500024",
+                "slug": "game-24",
+                "displayName": "游戏24",
+                "name": "Game 24",
+                "avatarURL": "https://static-cdn.jtvnw.net/ttv-boxart/24-285x380.jpg",
+                "viewersCount": 1024,
+                "tags": [],
+                "__typename": "Game"
+              }
+            },
+            {
+              "cursor": "dir-cur-25",
+              "trackingID": null,
+              "node": {
+                "id": "500025",
+                "slug": "game-25",
+                "displayName": "游戏25",
+                "name": "Game 25",
+                "avatarURL": "https://static-cdn.jtvnw.net/ttv-boxart/25-285x380.jpg",
+                "viewersCount": 1025,
+                "tags": [],
+                "__typename": "Game"
+              }
+            },
+            {
+              "cursor": "dir-cur-26",
+              "trackingID": null,
+              "node": {
+                "id": "500026",
+                "slug": "game-26",
+                "displayName": "游戏26",
+                "name": "Game 26",
+                "avatarURL": "https://static-cdn.jtvnw.net/ttv-boxart/26-285x380.jpg",
+                "viewersCount": 1026,
+                "tags": [],
+                "__typename": "Game"
+              }
+            },
+            {
+              "cursor": "dir-cur-27",
+              "trackingID": null,
+              "node": {
+                "id": "500027",
+                "slug": "game-27",
+                "displayName": "游戏27",
+                "name": "Game 27",
+                "avatarURL": "https://static-cdn.jtvnw.net/ttv-boxart/27-285x380.jpg",
+                "viewersCount": 1027,
+                "tags": [],
+                "__typename": "Game"
+              }
+            },
+            {
+              "cursor": "dir-cur-28",
+              "trackingID": null,
+              "node": {
+                "id": "500028",
+                "slug": "game-28",
+                "displayName": "游戏28",
+                "name": "Game 28",
+                "avatarURL": "https://static-cdn.jtvnw.net/ttv-boxart/28-285x380.jpg",
+                "viewersCount": 1028,
+                "tags": [],
+                "__typename": "Game"
+              }
+            },
+            {
+              "cursor": "dir-cur-29",
+              "trackingID": null,
+              "node": {
+                "id": "500029",
+                "slug": "game-29",
+                "displayName": "游戏29",
+                "name": "Game 29",
+                "avatarURL": "https://static-cdn.jtvnw.net/ttv-boxart/29-285x380.jpg",
+                "viewersCount": 1029,
+                "tags": [],
+                "__typename": "Game"
+              }
+            },
+            {
+              "cursor": "dir-cur-30",
+              "trackingID": null,
+              "node": {
+                "id": "500030",
+                "slug": "game-30",
+                "displayName": "游戏30",
+                "name": "Game 30",
+                "avatarURL": "https://static-cdn.jtvnw.net/ttv-boxart/30-285x380.jpg",
+                "viewersCount": 1030,
+                "tags": [],
+                "__typename": "Game"
+              }
+            }
+          ],
+          "pageInfo": {
+            "hasNextPage": true
+          }
+        }
+      }
+    },
+    {
+      "data": {
+        "directoriesWithTags": {
+          "edges": [
+            {
+              "cursor": "dir-cur-100",
+              "trackingID": null,
+              "node": {
+                "id": "500100",
+                "slug": "game-100",
+                "displayName": "游戏100",
+                "name": "Game 100",
+                "avatarURL": "https://static-cdn.jtvnw.net/ttv-boxart/100-285x380.jpg",
+                "viewersCount": 1100,
+                "tags": [],
+                "__typename": "Game"
+              }
+            }
+          ],
+          "pageInfo": {
+            "hasNextPage": false
+          }
+        }
+      }
+    },
+    {
+      "data": {
+        "directoriesWithTags": {
+          "edges": [],
+          "pageInfo": {
+            "hasNextPage": false
+          }
+        }
+      }
+    }
+  ],
+  "directories_p2": [
+    {
+      "data": {
+        "directoriesWithTags": {
+          "edges": [
+            {
+              "cursor": "dir-cur-200",
+              "trackingID": null,
+              "node": {
+                "id": "500200",
+                "slug": "game-200",
+                "displayName": "游戏200",
+                "name": "Game 200",
+                "avatarURL": "https://static-cdn.jtvnw.net/ttv-boxart/200-285x380.jpg",
+                "viewersCount": 1200,
+                "tags": [],
+                "__typename": "Game"
+              }
+            }
+          ],
+          "pageInfo": {
+            "hasNextPage": false
+          }
+        }
+      }
+    }
+  ],
+  "game_p1": [
+    {
+      "data": {
+        "game": {
+          "id": "509658",
+          "name": "Just Chatting",
+          "displayName": "谈天说地",
+          "streams": {
+            "edges": [
+              {
+                "cursor": "stream-cur-alice",
+                "node": {
+                  "id": "1000000001",
+                  "title": "AMONG US",
+                  "type": "live",
+                  "viewersCount": 59775,
+                  "createdAt": "2026-09-27T16:28:19Z",
+                  "previewImageURL": "https://static-cdn.jtvnw.net/previews-ttv/live_user_alice-440x248.jpg",
+                  "restriction": null,
+                  "broadcaster": {
+                    "id": "1",
+                    "login": "alice",
+                    "displayName": "ALICE",
+                    "profileImageURL": "https://cdn/alice.png"
+                  },
+                  "game": {
+                    "id": "509658",
+                    "name": "Just Chatting",
+                    "displayName": "谈天说地",
+                    "slug": "just-chatting"
+                  }
+                }
+              },
+              {
+                "cursor": "stream-cur-bob",
+                "node": {
+                  "id": "1000000001",
+                  "title": "WoW",
+                  "type": "live",
+                  "viewersCount": 34139,
+                  "createdAt": "2026-09-27T16:28:19Z",
+                  "previewImageURL": "https://static-cdn.jtvnw.net/previews-ttv/live_user_bob-440x248.jpg",
+                  "restriction": null,
+                  "broadcaster": {
+                    "id": "1",
+                    "login": "bob",
+                    "displayName": "BOB",
+                    "profileImageURL": "https://cdn/bob.png"
+                  },
+                  "game": {
+                    "id": "509658",
+                    "name": "Just Chatting",
+                    "displayName": "谈天说地",
+                    "slug": "just-chatting"
+                  }
+                }
+              },
+              {
+                "cursor": "stream-cur-carol",
+                "node": {
+                  "id": "1000000001",
+                  "title": "Chatting",
+                  "type": "live",
+                  "viewersCount": 1200,
+                  "createdAt": "2026-09-27T16:28:19Z",
+                  "previewImageURL": "https://static-cdn.jtvnw.net/previews-ttv/live_user_carol-440x248.jpg",
+                  "restriction": null,
+                  "broadcaster": {
+                    "id": "1",
+                    "login": "carol",
+                    "displayName": "CAROL",
+                    "profileImageURL": "https://cdn/carol.png"
+                  },
+                  "game": {
+                    "id": "509658",
+                    "name": "Just Chatting",
+                    "displayName": "谈天说地",
+                    "slug": "just-chatting"
+                  }
+                }
+              }
+            ],
+            "pageInfo": {
+              "hasNextPage": true
+            }
+          },
+          "__typename": "Game"
+        }
+      }
+    }
+  ],
+  "game_p2": [
+    {
+      "data": {
+        "game": {
+          "id": "509658",
+          "name": "Just Chatting",
+          "displayName": "谈天说地",
+          "streams": {
+            "edges": [
+              {
+                "cursor": "stream-cur-dave",
+                "node": {
+                  "id": "1000000001",
+                  "title": "Music",
+                  "type": "live",
+                  "viewersCount": 900,
+                  "createdAt": "2026-09-27T16:28:19Z",
+                  "previewImageURL": "https://static-cdn.jtvnw.net/previews-ttv/live_user_dave-440x248.jpg",
+                  "restriction": null,
+                  "broadcaster": {
+                    "id": "1",
+                    "login": "dave",
+                    "displayName": "DAVE",
+                    "profileImageURL": "https://cdn/dave.png"
+                  },
+                  "game": {
+                    "id": "509658",
+                    "name": "Just Chatting",
+                    "displayName": "谈天说地",
+                    "slug": "just-chatting"
+                  }
+                }
+              },
+              {
+                "cursor": "stream-cur-erin",
+                "node": {
+                  "id": "1000000001",
+                  "title": "Art",
+                  "type": "live",
+                  "viewersCount": 300,
+                  "createdAt": "2026-09-27T16:28:19Z",
+                  "previewImageURL": "https://static-cdn.jtvnw.net/previews-ttv/live_user_erin-440x248.jpg",
+                  "restriction": null,
+                  "broadcaster": {
+                    "id": "1",
+                    "login": "erin",
+                    "displayName": "ERIN",
+                    "profileImageURL": "https://cdn/erin.png"
+                  },
+                  "game": {
+                    "id": "509658",
+                    "name": "Just Chatting",
+                    "displayName": "谈天说地",
+                    "slug": "just-chatting"
+                  }
+                }
+              }
+            ],
+            "pageInfo": {
+              "hasNextPage": false
+            }
+          },
+          "__typename": "Game"
+        }
+      }
+    }
+  ],
+  "game_missing": [
+    {
+      "data": {
+        "game": null
+      }
+    }
+  ],
+  "streams_p1": {
+    "data": {
+      "streams": {
+        "edges": [
+          {
+            "cursor": "stream-cur-alice",
+            "node": {
+              "id": "1000000001",
+              "title": "AMONG US",
+              "type": "live",
+              "viewersCount": 59775,
+              "createdAt": "2026-09-27T16:28:19Z",
+              "previewImageURL": "https://static-cdn.jtvnw.net/previews-ttv/live_user_alice-440x248.jpg",
+              "restriction": null,
+              "broadcaster": {
+                "id": "1",
+                "login": "alice",
+                "displayName": "ALICE",
+                "profileImageURL": "https://cdn/alice.png"
+              },
+              "game": {
+                "id": "509658",
+                "name": "Just Chatting",
+                "displayName": "谈天说地",
+                "slug": "just-chatting"
+              }
+            }
+          },
+          {
+            "cursor": "stream-cur-bob",
+            "node": {
+              "id": "1000000001",
+              "title": "WoW",
+              "type": "live",
+              "viewersCount": 34139,
+              "createdAt": "2026-09-27T16:28:19Z",
+              "previewImageURL": "https://static-cdn.jtvnw.net/previews-ttv/live_user_bob-440x248.jpg",
+              "restriction": null,
+              "broadcaster": {
+                "id": "1",
+                "login": "bob",
+                "displayName": "BOB",
+                "profileImageURL": "https://cdn/bob.png"
+              },
+              "game": {
+                "id": "509658",
+                "name": "Just Chatting",
+                "displayName": "谈天说地",
+                "slug": "just-chatting"
+              }
+            }
+          },
+          {
+            "cursor": "stream-cur-carol",
+            "node": {
+              "id": "1000000001",
+              "title": "Chatting",
+              "type": "live",
+              "viewersCount": 1200,
+              "createdAt": "2026-09-27T16:28:19Z",
+              "previewImageURL": "https://static-cdn.jtvnw.net/previews-ttv/live_user_carol-440x248.jpg",
+              "restriction": null,
+              "broadcaster": {
+                "id": "1",
+                "login": "carol",
+                "displayName": "CAROL",
+                "profileImageURL": "https://cdn/carol.png"
+              },
+              "game": {
+                "id": "509658",
+                "name": "Just Chatting",
+                "displayName": "谈天说地",
+                "slug": "just-chatting"
+              }
+            }
+          }
+        ],
+        "pageInfo": {
+          "hasNextPage": true
+        }
+      }
+    }
+  },
+  "streams_p2": {
+    "data": {
+      "streams": {
+        "edges": [
+          {
+            "cursor": "stream-cur-dave",
+            "node": {
+              "id": "1000000001",
+              "title": "Music",
+              "type": "live",
+              "viewersCount": 900,
+              "createdAt": "2026-09-27T16:28:19Z",
+              "previewImageURL": "https://static-cdn.jtvnw.net/previews-ttv/live_user_dave-440x248.jpg",
+              "restriction": null,
+              "broadcaster": {
+                "id": "1",
+                "login": "dave",
+                "displayName": "DAVE",
+                "profileImageURL": "https://cdn/dave.png"
+              },
+              "game": {
+                "id": "509658",
+                "name": "Just Chatting",
+                "displayName": "谈天说地",
+                "slug": "just-chatting"
+              }
+            }
+          },
+          {
+            "cursor": "stream-cur-erin",
+            "node": {
+              "id": "1000000001",
+              "title": "Art",
+              "type": "live",
+              "viewersCount": 300,
+              "createdAt": "2026-09-27T16:28:19Z",
+              "previewImageURL": "https://static-cdn.jtvnw.net/previews-ttv/live_user_erin-440x248.jpg",
+              "restriction": null,
+              "broadcaster": {
+                "id": "1",
+                "login": "erin",
+                "displayName": "ERIN",
+                "profileImageURL": "https://cdn/erin.png"
+              },
+              "game": {
+                "id": "509658",
+                "name": "Just Chatting",
+                "displayName": "谈天说地",
+                "slug": "just-chatting"
+              }
+            }
+          }
+        ],
+        "pageInfo": {
+          "hasNextPage": false
+        }
+      }
+    }
+  },
+  "search_p1": {
+    "data": {
+      "searchFor": {
+        "channels": {
+          "cursor": "MTA=",
+          "edges": [
+            {
+              "trackingID": "t-feinberg",
+              "item": {
+                "broadcastSettings": {
+                  "id": "1",
+                  "title": "chamber trials",
+                  "__typename": "BroadcastSettings"
+                },
+                "displayName": "FEINBERG",
+                "id": "1",
+                "lastBroadcast": {
+                  "id": "2",
+                  "startedAt": "2026-09-27T17:44:23.615106Z",
+                  "__typename": "Broadcast"
+                },
+                "login": "feinberg",
+                "profileImageURL": "https://cdn/feinberg.png",
+                "description": "",
+                "stream": {
+                  "id": "2",
+                  "viewersCount": 3189,
+                  "previewImageURL": "https://cdn/feinberg-preview.jpg",
+                  "game": {
+                    "displayName": "Minecraft"
+                  }
+                },
+                "__typename": "User"
+              }
+            },
+            {
+              "trackingID": "t-minecraft",
+              "item": {
+                "broadcastSettings": {
+                  "id": "1",
+                  "title": "Minecraft LIVE",
+                  "__typename": "BroadcastSettings"
+                },
+                "displayName": "MINECRAFT",
+                "id": "1",
+                "lastBroadcast": {
+                  "id": "2",
+                  "startedAt": "2026-09-27T17:44:23.615106Z",
+                  "__typename": "Broadcast"
+                },
+                "login": "minecraft",
+                "profileImageURL": "https://cdn/minecraft.png",
+                "description": "",
+                "stream": null,
+                "__typename": "User"
+              }
+            },
+            {
+              "trackingID": "t-tubbo",
+              "item": {
+                "broadcastSettings": {
+                  "id": "1",
+                  "title": "hello",
+                  "__typename": "BroadcastSettings"
+                },
+                "displayName": "TUBBO",
+                "id": "1",
+                "lastBroadcast": {
+                  "id": "2",
+                  "startedAt": "2026-09-27T17:44:23.615106Z",
+                  "__typename": "Broadcast"
+                },
+                "login": "tubbo",
+                "profileImageURL": "https://cdn/tubbo.png",
+                "description": "",
+                "stream": {
+                  "id": "2",
+                  "viewersCount": 2351,
+                  "previewImageURL": "https://cdn/tubbo-preview.jpg",
+                  "game": {
+                    "displayName": "Minecraft"
+                  }
+                },
+                "__typename": "User"
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "search_p2": {
+    "data": {
+      "searchFor": {
+        "channels": {
+          "cursor": null,
+          "edges": [
+            {
+              "trackingID": "t-dominoe",
+              "item": {
+                "broadcastSettings": {
+                  "id": "1",
+                  "title": "hardcore",
+                  "__typename": "BroadcastSettings"
+                },
+                "displayName": "DOMINOE",
+                "id": "1",
+                "lastBroadcast": {
+                  "id": "2",
+                  "startedAt": "2026-09-27T17:44:23.615106Z",
+                  "__typename": "Broadcast"
+                },
+                "login": "dominoe",
+                "profileImageURL": "https://cdn/dominoe.png",
+                "description": "",
+                "stream": {
+                  "id": "2",
+                  "viewersCount": 400,
+                  "previewImageURL": "https://cdn/dominoe-preview.jpg",
+                  "game": {
+                    "displayName": "Minecraft"
+                  }
+                },
+                "__typename": "User"
+              }
+            },
+            {
+              "trackingID": "t-smajor",
+              "item": {
+                "broadcastSettings": {
+                  "id": "1",
+                  "title": "building",
+                  "__typename": "BroadcastSettings"
+                },
+                "displayName": "SMAJOR",
+                "id": "1",
+                "lastBroadcast": {
+                  "id": "2",
+                  "startedAt": "2026-09-27T17:44:23.615106Z",
+                  "__typename": "Broadcast"
+                },
+                "login": "smajor",
+                "profileImageURL": "https://cdn/smajor.png",
+                "description": "",
+                "stream": {
+                  "id": "2",
+                  "viewersCount": 100,
+                  "previewImageURL": "https://cdn/smajor-preview.jpg",
+                  "game": {
+                    "displayName": "Minecraft"
+                  }
+                },
+                "__typename": "User"
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "integrity": {
+    "errors": [
+      {
+        "message": "failed integrity check",
+        "path": [
+          "game",
+          "streams"
+        ],
+        "extensions": {
+          "code": "IntegrityCheckFailed"
+        }
+      }
+    ],
+    "data": null,
+    "extensions": {
+      "challenge": {
+        "type": "integrity"
+      }
+    }
+  }
+}

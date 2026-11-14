@@ -1,6 +1,9 @@
 //! Twitch 平台模块（IP-5）。
 //!
-//! 行为基准唯一：`simple_live_core/lib/src/platforms/twitch/{twitch_site,twitch_models,twitch_danmaku}.dart`。
+//! 行为基准：
+//! - 详情 / 取流 / 弹幕：`simple_live_core/lib/src/platforms/twitch/*.dart`（旧 Dart core）；
+//! - 分类 / 首页推荐 / 搜索：PureLive `live_core/src/sites/twitch/*.dart`（本轮按该实现重写）。
+//!
 //! - HTTP 读链路：GQL（`gql.twitch.tv/gql`，**POST JSON**）+ usher m3u8（GET）；
 //! - 弹幕：**IRC over WebSocket**（`wss://irc-ws.chat.twitch.tv`，匿名登录）。
 //!
@@ -8,13 +11,17 @@
 //! Twitch 的 GQL 是 POST JSON，共享 `HttpTransport` 只暴露 `get`，故在 [`transport`] 内
 //! 自建一条平台内 POST 通道（与斗鱼 `transport.rs` 同构，不改共享 `http.rs`）。
 
+pub mod catalog;
 pub mod danmaku;
 pub mod detail;
 pub mod gql;
+pub mod gql_response;
 pub mod header;
 pub mod models;
 pub mod m3u8;
 pub mod play;
+pub mod rooms;
+pub mod search;
 pub mod site;
 pub mod transport;
 pub mod unsupported;

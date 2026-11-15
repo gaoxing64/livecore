@@ -28,7 +28,7 @@ jobs:
         run: cargo clippy -p slive-core -p slive-host -p slive-ffi --all-targets -- -D warnings
 
       - name: clippy (bridge crate)
-        run: cargo clippy -p rust_lib_simple_live_app --all-targets
+        run: cargo clippy -p rust_lib_livecore --all-targets
 
       - name: C header contract
         run: cargo test -p slive-ffi --test header_sync

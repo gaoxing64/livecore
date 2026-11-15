@@ -2,7 +2,7 @@
 name = "slive-cli"
 version = "0.1.0"
 edition = "2021"
-description = "Simple Live 命令行工具：直连 slive-core，不经 FRB"
+description = "Slive 命令行工具：直连 slive-core，不经 FRB"
 publish = false
 
 [[bin]]

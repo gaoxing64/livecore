@@ -5,11 +5,11 @@
 //! 回退窗口已结束：`sites.dart` 直连本绑定层，无运行时开关；
 //! Dart core 的 B站实现待 console 迁移后删除（console 暂留 Dart 路径）。
 
-import 'package:simple_live_core/src/rust/api/slive/danmaku.dart' as rust_danmaku;
-import 'package:simple_live_core/src/rust/api/slive/models/danmu.dart' as rust_danmu;
-import 'package:simple_live_core/src/rust/api/slive/models/message.dart' as rust_msg;
-import 'package:simple_live_core/src/rust/api/slive/site.dart' as rust_site;
-import 'package:simple_live_core/simple_live_core.dart';
+import 'package:livecore/src/rust/api/slive/danmaku.dart' as rust_danmaku;
+import 'package:livecore/src/rust/api/slive/models/danmu.dart' as rust_danmu;
+import 'package:livecore/src/rust/api/slive/models/message.dart' as rust_msg;
+import 'package:livecore/src/rust/api/slive/site.dart' as rust_site;
+import 'package:livecore/livecore.dart';
 
 import 'rust_danmaku_base.dart';
 import 'rust_site_handle.dart';

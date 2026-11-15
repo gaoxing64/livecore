@@ -1,4 +1,4 @@
-# 构建 Simple Live C ABI（Windows）
+# 构建 LiveCore C ABI（Windows）
 #
 # 默认产出 cdylib（slive_ffi.dll）+ staticlib（slive_ffi.lib）。
 # 加 -StaticCrt 可启用静态 CRT（宿主必须同口径，否则 MSVC 报 LNK2038）。
@@ -8,7 +8,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$root = Split-Path -Parent $PSScriptRoot
+$root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 Push-Location $root
 try {
     $args = @("build", "-p", "slive-ffi", "--target", "x86_64-pc-windows-msvc")

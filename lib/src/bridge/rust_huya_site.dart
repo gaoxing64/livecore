@@ -10,12 +10,12 @@
 //! `getPlayUrls(detail:, quality:)` 会把它带回 Rust（J-10：
 //! 任何 Dart 消费者解析失败必须抛 `FormatException`，不得静默兜底）。
 
-import 'package:simple_live_core/src/rust/api/slive/huya.dart' as rust_huya_danmaku;
-import 'package:simple_live_core/src/rust/api/slive/huya_site.dart'
+import 'package:livecore/src/rust/api/slive/huya.dart' as rust_huya_danmaku;
+import 'package:livecore/src/rust/api/slive/huya_site.dart'
     as rust_huya;
-import 'package:simple_live_core/src/rust/api/slive/models/danmu.dart' as rust_danmu;
-import 'package:simple_live_core/src/rust/api/slive/models/message.dart' as rust_msg;
-import 'package:simple_live_core/simple_live_core.dart';
+import 'package:livecore/src/rust/api/slive/models/danmu.dart' as rust_danmu;
+import 'package:livecore/src/rust/api/slive/models/message.dart' as rust_msg;
+import 'package:livecore/livecore.dart';
 
 import 'rust_danmaku_base.dart';
 import 'rust_site_handle.dart';

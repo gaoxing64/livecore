@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // 从斗鱼网页端自动同步内置静态表情表。
 //
-// 用法（在 simple_live_core 根目录）：
+// 用法（在 livecore 根目录）：
 //   node tools/generate_douyu_emoticons.mjs
 //   node tools/generate_douyu_emoticons.mjs --check
 //

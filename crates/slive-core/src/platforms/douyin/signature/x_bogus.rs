@@ -1,4 +1,4 @@
-//! X-Bogus 签名（逐字节移植 Dart `simple_live_core/lib/src/platforms/douyin/xbogus.dart`）。
+//! X-Bogus 签名（逐字节移植 Dart `livecore/lib/src/platforms/douyin/xbogus.dart`）。
 //!
 //! # 流程（Dart `generateXBogus`）
 //! 1. 校验 `msStub` 是 32 字符的 md5 hex；

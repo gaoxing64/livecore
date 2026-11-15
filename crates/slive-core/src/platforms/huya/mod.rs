@@ -1,4 +1,4 @@
-//! 虎牙平台实现（IP-4；对照 Dart `simple_live_core/lib/src/platforms/huya/`）。
+//! 虎牙平台实现（IP-4；对照 Dart `livecore/lib/src/platforms/huya/`）。
 //!
 //! 模块划分（按能力分包，依赖只向下）：
 //! - [`site`]：站点句柄 + 15 方法编排（唯一持有状态处）；

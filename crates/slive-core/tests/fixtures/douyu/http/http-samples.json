@@ -7,10 +7,10 @@
     "needs_realtime_validation": true,
     "realtime_validation_plan": "用 mitmproxy/Charles 或 dart HttpClientAdapter 录制https://www.douyu.com 与 passport.douyu.com 的真实响应，逐样本核对：①嵌套层级与额外字段 ②数值字段的真实类型（string vs int）③错误流形态。替换后把 _meta.synthetic 改 false。",
     "verification_assets": [
-      "simple_live_core/test/douyu_enc.json（getEncryption 真实抓包，本目录已引用其字段值）",
-      "simple_live_core/test/douyu_sc.json（voice_trlt 真实抓包，ws 夹具引用其形状）",
-      "simple_live_core/test/douyu_recommend_paging_test.dart（pgcnt 恒 0 的实测记录）",
-      "simple_live_core/test/douyu_play_url_renew_test.dart（renewers + expire=0 行为）"
+      "livecore/test/douyu_enc.json（getEncryption 真实抓包，本目录已引用其字段值）",
+      "livecore/test/douyu_sc.json（voice_trlt 真实抓包，ws 夹具引用其形状）",
+      "livecore/test/douyu_recommend_paging_test.dart（pgcnt 恒 0 的实测记录）",
+      "livecore/test/douyu_play_url_renew_test.dart（renewers + expire=0 行为）"
     ]
   },
   "samples": {
@@ -769,7 +769,7 @@
         "is_special": false,
         "expire_at_local": "now + 300（douyu_utils.dart:124 覆盖服务端值）"
       },
-      "note": "**本夹具的 enc_data / key / rand_str 来自 Dart 测试资产 `simple_live_core/test/douyu_enc.json`（真实抓包）**，仅保留 sign() 实际读取的字段（cpp 子弹已裁剪）。",
+      "note": "**本夹具的 enc_data / key / rand_str 来自 Dart 测试资产 `livecore/test/douyu_enc.json`（真实抓包）**，仅保留 sign() 实际读取的字段（cpp 子弹已裁剪）。",
       "verify_note": "风控错误码取值范围待抓包（Dart 未对 getEncryption 的 error 做判断，直接取 res['data'] 会 NPE —— 实现须补上，但**错误码集合以抓包为准**）。",
       "variants": [
         {

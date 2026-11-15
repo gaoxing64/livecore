@@ -10,7 +10,7 @@
     "room_v1_Area_getList": {
       "endpoint": "https://api.live.bilibili.com/room/v1/Area/getList",
       "method": "GET",
-      "dart_source": "simple_live_core/lib/src/platforms/bilibili/bilibili_site.dart:51-80",
+      "dart_source": "livecore/lib/src/platforms/bilibili/bilibili_site.dart:51-80",
       "target_ac": [
         "AC-01"
       ],
@@ -59,7 +59,7 @@
     "xlive_web-interface_v1_second_getList": {
       "endpoint": "https://api.live.bilibili.com/xlive/web-interface/v1/second/getList",
       "method": "GET(+wbi)",
-      "dart_source": "simple_live_core/lib/src/platforms/bilibili/bilibili_site.dart:82-114",
+      "dart_source": "livecore/lib/src/platforms/bilibili/bilibili_site.dart:82-114",
       "target_ac": [
         "AC-02"
       ],
@@ -116,7 +116,7 @@
     "xlive_web-interface_v1_second_getListByArea": {
       "endpoint": "https://api.live.bilibili.com/xlive/web-interface/v1/second/getListByArea",
       "method": "GET(+wbi)",
-      "dart_source": "simple_live_core/lib/src/platforms/bilibili/bilibili_site.dart:195-222",
+      "dart_source": "livecore/lib/src/platforms/bilibili/bilibili_site.dart:195-222",
       "target_ac": [
         "AC-03"
       ],
@@ -163,7 +163,7 @@
     "www.bilibili.com_x_web-interface_search_type_live": {
       "endpoint": "https://api.bilibili.com/x/web-interface/search/type?search_type=live",
       "method": "GET",
-      "dart_source": "simple_live_core/lib/src/platforms/bilibili/bilibili_site.dart:273-304",
+      "dart_source": "livecore/lib/src/platforms/bilibili/bilibili_site.dart:273-304",
       "target_ac": [
         "AC-04"
       ],
@@ -207,7 +207,7 @@
     "www.bilibili.com_x_web-interface_search_type_live_user": {
       "endpoint": "https://api.bilibili.com/x/web-interface/search/type?search_type=live_user",
       "method": "GET",
-      "dart_source": "simple_live_core/lib/src/platforms/bilibili/bilibili_site.dart:307-337",
+      "dart_source": "livecore/lib/src/platforms/bilibili/bilibili_site.dart:307-337",
       "target_ac": [
         "AC-05"
       ],
@@ -247,7 +247,7 @@
     "getInfoByRoom_plus_getDanmuInfo": {
       "endpoint": "https://api.live.bilibili.com/xlive/web-room/v1/index/getInfoByRoom + .../getDanmuInfo",
       "method": "GET(+wbi)",
-      "dart_source": "simple_live_core/lib/src/platforms/bilibili/bilibili_site.dart:225-270",
+      "dart_source": "livecore/lib/src/platforms/bilibili/bilibili_site.dart:225-270",
       "target_ac": [
         "AC-06",
         "AC-22"
@@ -351,7 +351,7 @@
     "xlive_web-room_v2_index_getRoomPlayInfo": {
       "endpoint": "https://api.live.bilibili.com/xlive/web-room/v2/index/getRoomPlayInfo",
       "method": "GET",
-      "dart_source": "simple_live_core/lib/src/platforms/bilibili/bilibili_site.dart:117-192",
+      "dart_source": "livecore/lib/src/platforms/bilibili/bilibili_site.dart:117-192",
       "target_ac": [
         "AC-07",
         "AC-08",
@@ -455,7 +455,7 @@
     "room_v1_Room_get_info": {
       "endpoint": "https://api.live.bilibili.com/room/v1/Room/get_info",
       "method": "GET",
-      "dart_source": "simple_live_core/lib/src/platforms/bilibili/bilibili_site.dart:340-349",
+      "dart_source": "livecore/lib/src/platforms/bilibili/bilibili_site.dart:340-349",
       "target_ac": [
         "AC-09"
       ],
@@ -492,7 +492,7 @@
     "av_v1_SuperChat_getMessageList": {
       "endpoint": "https://api.live.bilibili.com/av/v1/SuperChat/getMessageList",
       "method": "GET",
-      "dart_source": "simple_live_core/lib/src/platforms/bilibili/bilibili_site.dart:352-379",
+      "dart_source": "livecore/lib/src/platforms/bilibili/bilibili_site.dart:352-379",
       "target_ac": [
         "AC-10"
       ],
@@ -552,7 +552,7 @@
     "passport_qrcode_generate": {
       "endpoint": "https://passport.bilibili.com/x/passport-login/web/qrcode/generate",
       "method": "GET",
-      "dart_source": "simple_live_core/lib/src/platforms/bilibili/bilibili_site.dart:561-573",
+      "dart_source": "livecore/lib/src/platforms/bilibili/bilibili_site.dart:561-573",
       "target_ac": [
         "AC-18"
       ],
@@ -588,7 +588,7 @@
     "passport_qrcode_poll": {
       "endpoint": "https://passport.bilibili.com/x/passport-login/web/qrcode/poll",
       "method": "GET",
-      "dart_source": "simple_live_core/lib/src/platforms/bilibili/bilibili_site.dart:576-610",
+      "dart_source": "livecore/lib/src/platforms/bilibili/bilibili_site.dart:576-610",
       "target_ac": [
         "AC-19"
       ],
@@ -660,7 +660,7 @@
     "x_member_web_account": {
       "endpoint": "https://api.bilibili.com/x/member/web/account",
       "method": "GET",
-      "dart_source": "simple_live_core/lib/src/platforms/bilibili/bilibili_site.dart:613-635",
+      "dart_source": "livecore/lib/src/platforms/bilibili/bilibili_site.dart:613-635",
       "target_ac": [
         "AC-20",
         "AC-24"
@@ -703,7 +703,7 @@
     "x_frontend_finger_spi": {
       "endpoint": "https://api.bilibili.com/x/frontend/finger/spi",
       "method": "GET",
-      "dart_source": "simple_live_core/lib/src/platforms/bilibili/bilibili_site.dart:389-414",
+      "dart_source": "livecore/lib/src/platforms/bilibili/bilibili_site.dart:389-414",
       "target_ac": [
         "AC-21"
       ],
@@ -727,7 +727,7 @@
     "x_web-interface_nav": {
       "endpoint": "https://api.bilibili.com/x/web-interface/nav",
       "method": "GET",
-      "dart_source": "simple_live_core/lib/src/platforms/bilibili/bilibili_site.dart:484-503",
+      "dart_source": "livecore/lib/src/platforms/bilibili/bilibili_site.dart:484-503",
       "target_ac": [
         "AC-21"
       ],
@@ -753,7 +753,7 @@
     "live.bilibili.com_lol": {
       "endpoint": "https://live.bilibili.com/lol",
       "method": "GET(text)",
-      "dart_source": "simple_live_core/lib/src/platforms/bilibili/bilibili_site.dart:536-550",
+      "dart_source": "livecore/lib/src/platforms/bilibili/bilibili_site.dart:536-550",
       "target_ac": [
         "AC-21"
       ],

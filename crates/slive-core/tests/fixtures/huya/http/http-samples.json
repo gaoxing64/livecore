@@ -8,7 +8,7 @@
     "realtime_validation_plan": "录制 www.huya.com 房间页 HTML（重点核对两条正则是否仍中）、cache.php / bussLive / search.cdn 的真实 JSON 形态（尤其 gid 与 gameLiveOn 的类型）。替换后 synthetic 改 false。",
     "html_samples_note": "响应体为 HTML 文本的样本用 `__raw_html` 字段承载（而非 JSON 对象），夹具加载时按文本注入 mock。",
     "verification_assets": [
-      "simple_live_core/test/ 下无虎牙专用资产；huya 为 5 平台中唯一 App 侧联网有 3~4 条存量失败的平台（见 16-app-regression-baseline.md §6），说明其接口对网络/时段敏感，离线夹具尤必要。"
+      "livecore/test/ 下无虎牙专用资产；huya 为 5 平台中唯一 App 侧联网有 3~4 条存量失败的平台（见 16-app-regression-baseline.md §6），说明其接口对网络/时段敏感，离线夹具尤必要。"
     ]
   },
   "samples": {

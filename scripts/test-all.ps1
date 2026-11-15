@@ -13,7 +13,7 @@ function Step($name, $block) {
 
 Step "cargo test --workspace"   { cargo test --workspace }
 Step "clippy (new crates)"      { cargo clippy -p slive-core -p slive-host -p slive-ffi --all-targets -- -D warnings }
-Step "clippy (bridge)"          { cargo clippy -p rust_lib_simple_live_app --all-targets }
+Step "clippy (bridge)"          { cargo clippy -p rust_lib_livecore --all-targets }
 Step "header sync"              { cargo test -p slive-ffi --test header_sync }
 Step "codegen drift"            { git diff --exit-code src/frb_generated.rs lib/src/rust/ }
 

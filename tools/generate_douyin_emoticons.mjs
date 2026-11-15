@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // 从抖音公开表情接口同步内置静态表情表（运行时失败时的兜底）。
 //
-// 用法（在 simple_live_core 根目录）：
+// 用法（在 livecore 根目录）：
 //   node tools/generate_douyin_emoticons.mjs
 //   node tools/generate_douyin_emoticons.mjs --check
 //

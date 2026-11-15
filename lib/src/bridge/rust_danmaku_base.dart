@@ -2,9 +2,9 @@
 
 import 'dart:async';
 
-import 'package:simple_live_core/src/rust/api/slive/models/danmu.dart' as rust_danmu;
-import 'package:simple_live_core/src/rust/api/slive/models/message.dart' as rust_msg;
-import 'package:simple_live_core/simple_live_core.dart';
+import 'package:livecore/src/rust/api/slive/models/danmu.dart' as rust_danmu;
+import 'package:livecore/src/rust/api/slive/models/message.dart' as rust_msg;
+import 'package:livecore/livecore.dart';
 
 /// 弹幕适配骨架：连接句柄类型 [C] 各平台不同（`DanmakuConnection` /
 /// `DouyinDanmakuConnection` 等），会话装配与事件分发全平台一致。

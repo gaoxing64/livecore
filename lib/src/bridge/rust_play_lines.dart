@@ -3,9 +3,9 @@
 //! 纪律（同其余 bridge）：只做类型翻译与转发 —— 容器判定、mcdn/scdn 降级、
 //! 探测与排序策略全在 `slive_core::play`（Rust），本层不得出现任何规则判断。
 
-import 'package:simple_live_core/src/common/core_log.dart';
-import 'package:simple_live_core/src/rust/api/slive/models/play.dart' as rust_models;
-import 'package:simple_live_core/src/rust/api/slive/play.dart' as rust_play;
+import 'package:livecore/src/common/core_log.dart';
+import 'package:livecore/src/rust/api/slive/models/play.dart' as rust_models;
+import 'package:livecore/src/rust/api/slive/play.dart' as rust_play;
 
 /// 线路容器类型。
 enum LiveLineKind {

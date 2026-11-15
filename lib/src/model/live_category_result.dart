@@ -1,4 +1,4 @@
-import 'package:simple_live_core/src/model/live_room_item.dart';
+import 'package:livecore/src/model/live_room_item.dart';
 
 class LiveCategoryResult {
   final bool hasMore;

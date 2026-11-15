@@ -4,10 +4,10 @@
 //! 不得出现 URL 拼接 / 签名 / STT 解析 / 重试；一切协议能力在 `slive-core`（Rust）。
 //! 回退窗口已结束：`sites.dart` 直连本绑定层，无运行时开关。
 
-import 'package:simple_live_core/src/rust/api/slive/douyu.dart' as rust_douyu;
-import 'package:simple_live_core/src/rust/api/slive/models/danmu.dart' as rust_danmu;
-import 'package:simple_live_core/src/rust/api/slive/models/message.dart' as rust_msg;
-import 'package:simple_live_core/simple_live_core.dart';
+import 'package:livecore/src/rust/api/slive/douyu.dart' as rust_douyu;
+import 'package:livecore/src/rust/api/slive/models/danmu.dart' as rust_danmu;
+import 'package:livecore/src/rust/api/slive/models/message.dart' as rust_msg;
+import 'package:livecore/livecore.dart';
 
 import 'rust_danmaku_base.dart';
 import 'rust_douyu_models.dart';

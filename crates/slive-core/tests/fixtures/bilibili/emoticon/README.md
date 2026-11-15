@@ -2,14 +2,14 @@
 
 ## 文件
 
-- `emoticon-cases.json` —— **立即可用**。迁移自 `simple_live_core/test/bilibili_emoticon_test.dart` 的 **31 条契约**（含 `parseBilibiliEmoticons` group 30 条 + `LiveMessage` 序列化 1 条）。
+- `emoticon-cases.json` —— **立即可用**。迁移自 `livecore/test/bilibili_emoticon_test.dart` 的 **31 条契约**（含 `parseBilibiliEmoticons` group 30 条 + `LiveMessage` 序列化 1 条）。
   拆分子用例后共 **37 条断言组**（`EMO-18a/18b`、`EMO-22a/22b`、`EMO-24a/24b`、`EMO-28a..28e`）。
 
 ## 为什么是「已核实」（可信度 A 级）
 
 - 输入 `info` 数组由 Dart 测试 helper `_infoOf`（`bilibili_emoticon_test.dart:22-45`）与 `_emot`（`:47-52`）**逐字复刻**。
 - 断言 `expect` **只含 Dart 测试真正断言的内容**（不过度断言），避免「我们自己编的期望」。
-- 运行时实现参考 `simple_live_core/lib/src/platforms/bilibili/bilibili_emoticon.dart:1-300`。
+- 运行时实现参考 `livecore/lib/src/platforms/bilibili/bilibili_emoticon.dart:1-300`。
 
 ## 数据结构
 
@@ -20,7 +20,7 @@
     {
       "id": "EMO-01",
       "origin_test": "从 extra.emots 解析出占位符与图片地址",
-      "dart_source": "simple_live_core/test/bilibili_emoticon_test.dart:56",
+      "dart_source": "livecore/test/bilibili_emoticon_test.dart:56",
       "input": { "info": [ ... ], "message": "哈哈哈[doge]笑死" },
       "expect": [ { "op": "not_null" }, { "op": "len_eq", "value": 1 }, ... ]
     }

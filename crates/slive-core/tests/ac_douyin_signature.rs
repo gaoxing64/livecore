@@ -5,7 +5,7 @@
 //! - [`golden`]：golden 逐字节比对 + 输入敏感度守护
 //! - [`invariants`]：SM3 标准向量（Dart 实测）+ 常量表维度守护
 //!
-//! 基准：`simple_live_core/lib/src/platforms/douyin/abogus.dart`（732 行）
+//! 基准：`livecore/lib/src/platforms/douyin/abogus.dart`（732 行）
 //! 与 `xbogus.dart`（133 行）。
 
 #[path = "ac_douyin_signature/cases.rs"]

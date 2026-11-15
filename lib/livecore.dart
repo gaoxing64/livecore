@@ -1,3 +1,4 @@
+/// Public Dart API for LiveCore.
 library;
 
 export 'src/interface/live_site.dart';

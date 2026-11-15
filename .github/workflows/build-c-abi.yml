@@ -1,0 +1,181 @@
+name: LiveCore C ABI
+
+on:
+  workflow_call:
+    inputs:
+      source_ref:
+        description: Git ref in gaoxing64/livecore to build
+        required: false
+        type: string
+        default: future
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: Git ref in gaoxing64/livecore to build (defaults to the selected ref)
+        required: false
+        type: string
+        default: ""
+  push:
+    branches:
+      - future
+    tags:
+      - "v*"
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: livecore-c-abi-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: ${{ matrix.target }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            target: x86_64-unknown-linux-gnu
+          - runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+          - runner: macos-latest
+            target: aarch64-apple-darwin
+          - runner: macos-latest
+            target: x86_64-apple-darwin
+          - runner: windows-latest
+            target: x86_64-pc-windows-msvc
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Check out LiveCore source
+        uses: actions/checkout@v7
+        with:
+          repository: gaoxing64/livecore
+          ref: ${{ inputs.source_ref || github.ref }}
+
+      - name: Install Linux native TLS dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libssl-dev pkg-config
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache Rust builds
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      - name: Build C ABI
+        run: cargo build --locked --release -p slive-ffi --target ${{ matrix.target }}
+
+      - name: Read build version
+        id: version
+        shell: bash
+        run: |
+          VERSION="$(git describe --tags --exact-match 2>/dev/null || git rev-parse --short=12 HEAD)"
+          echo "value=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Package C ABI (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        env:
+          TARGET: ${{ matrix.target }}
+          VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          set -euo pipefail
+          PACKAGE="livecore-cabi-${TARGET}-${VERSION}"
+          PACKAGE_DIR="dist/${PACKAGE}"
+          mkdir -p "${PACKAGE_DIR}/include" "${PACKAGE_DIR}/csharp" "${PACKAGE_DIR}/lib"
+          cp crates/slive-ffi/include/slive.h crates/slive-ffi/include/slive.hpp "${PACKAGE_DIR}/include/"
+          cp crates/slive-ffi/csharp/Slive.cs "${PACKAGE_DIR}/csharp/"
+          cp target/${TARGET}/release/*slive_ffi* "${PACKAGE_DIR}/lib/"
+          if [ -f LICENSE ]; then cp LICENSE "${PACKAGE_DIR}/"; fi
+          cat > "${PACKAGE_DIR}/README.txt" <<EOF
+          LiveCore C ABI
+          Target: ${TARGET}
+          Source: ${VERSION}
+
+          C header: include/slive.h
+          C++ wrapper: include/slive.hpp
+          C# wrapper: csharp/Slive.cs
+          Native libraries: lib/
+          EOF
+          ARCHIVE="dist/${PACKAGE}.tar.gz"
+          tar -czf "${ARCHIVE}" -C dist "${PACKAGE}"
+          if [ "${RUNNER_OS}" = "macOS" ]; then
+            shasum -a 256 "${ARCHIVE}" > "${ARCHIVE}.sha256"
+          else
+            sha256sum "${ARCHIVE}" > "${ARCHIVE}.sha256"
+          fi
+
+      - name: Package C ABI (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          TARGET: ${{ matrix.target }}
+          VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $package = "dist/livecore-cabi-$env:TARGET-$env:VERSION"
+          New-Item -ItemType Directory -Force -Path "$package/include", "$package/csharp", "$package/lib" | Out-Null
+          Copy-Item 'crates/slive-ffi/include/slive.h', 'crates/slive-ffi/include/slive.hpp' "$package/include/"
+          Copy-Item 'crates/slive-ffi/csharp/Slive.cs' "$package/csharp/"
+          $libraries = Get-ChildItem "target/$env:TARGET/release/*slive_ffi*" -File
+          if (-not $libraries) { throw 'Cargo did not produce the expected slive_ffi libraries.' }
+          $libraries | Copy-Item -Destination "$package/lib/"
+          if (Test-Path 'LICENSE') { Copy-Item 'LICENSE' "$package/" }
+          @"
+          LiveCore C ABI
+          Target: $env:TARGET
+          Source: $env:VERSION
+
+          C header: include/slive.h
+          C++ wrapper: include/slive.hpp
+          C# wrapper: csharp/Slive.cs
+          Native libraries: lib/
+          "@ | Set-Content -Encoding utf8 "$package/README.txt"
+          $archive = "$package.tar.gz"
+          tar -czf $archive -C dist (Split-Path $package -Leaf)
+          $hash = (Get-FileHash $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $(Split-Path $archive -Leaf)" | Set-Content -NoNewline "$archive.sha256"
+
+      - name: Upload C ABI package
+        uses: actions/upload-artifact@v7
+        with:
+          name: livecore-cabi-${{ matrix.target }}
+          path: |
+            dist/livecore-cabi-*.tar.gz
+            dist/livecore-cabi-*.tar.gz.sha256
+          if-no-files-found: error
+          retention-days: 30
+
+  publish-release:
+    name: Publish release assets
+    needs: build
+    if: github.repository == 'gaoxing64/livecore' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Download target packages
+        uses: actions/download-artifact@v8
+        with:
+          pattern: livecore-cabi-*
+          path: dist
+          merge-multiple: true
+
+      - name: Publish to GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/* --clobber
+          else
+            gh release create "$TAG" dist/* --generate-notes
+          fi

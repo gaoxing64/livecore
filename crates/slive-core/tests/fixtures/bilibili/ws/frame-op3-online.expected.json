@@ -2,7 +2,7 @@
   "_meta": {
     "kind": "ws-frame",
     "synthetic": true,
-    "frame_format_source": "simple_live_core/lib/src/platforms/bilibili/bilibili_danmaku.dart:119-145,147-184,241-261",
+    "frame_format_source": "livecore/lib/src/platforms/bilibili/bilibili_danmaku.dart:119-145,147-184,241-261",
     "note": "帧头 16 字节：len(u32 BE)/hdrlen(u16=16)/protover(u16)/op(u32)/seq(u32)。内容为合成，待真实抓包替换。",
     "target_ac": [
       "AC-12"

@@ -288,7 +288,7 @@ fn qr_poll_covers_four_status_codes() {
 #[test]
 fn get_encryption_sample_uses_real_capture_fields() {
     // 该样本的 enc_data/key/rand_str 来自真实抓包
-    // （simple_live_core/test/douyu_enc.json），仅裁剪 sign() 不读的 cpp 字段。
+    // （livecore/test/douyu_enc.json），仅裁剪 sign() 不读的 cpp 字段。
     let s = sample(PLATFORM, "www_douyu_com_wgapi_livenc_liveweb_websec_getEncryption");
     let data = &s["response"]["data"];
     for field in ["key", "rand_str", "enc_time", "is_special", "enc_data"] {

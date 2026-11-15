@@ -19,12 +19,12 @@
 
 import 'dart:convert';
 
-import 'package:simple_live_core/simple_live_core.dart';
+import 'package:livecore/livecore.dart';
 
-import 'package:simple_live_core/src/rust/api/slive/twitch/danmaku.dart' as rust_twitch_danmaku;
-import 'package:simple_live_core/src/rust/api/slive/twitch/site.dart' as rust_twitch_site;
-import 'package:simple_live_core/src/rust/api/slive/models/danmu.dart' as rust_danmu;
-import 'package:simple_live_core/src/rust/api/slive/models/message.dart' as rust_msg;
+import 'package:livecore/src/rust/api/slive/twitch/danmaku.dart' as rust_twitch_danmaku;
+import 'package:livecore/src/rust/api/slive/twitch/site.dart' as rust_twitch_site;
+import 'package:livecore/src/rust/api/slive/models/danmu.dart' as rust_danmu;
+import 'package:livecore/src/rust/api/slive/models/message.dart' as rust_msg;
 
 import 'rust_danmaku_base.dart';
 import 'rust_site_handle.dart';

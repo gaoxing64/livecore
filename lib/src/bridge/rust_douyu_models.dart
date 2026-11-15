@@ -1,4 +1,4 @@
-//! 斗鱼 Rust Core 模型 -> simple_live_core 模型的类型翻译层。
+//! 斗鱼 Rust Core 模型 -> livecore 模型的类型翻译层。
 //!
 //! 纪律（AC-39 / J-6）：**只做逐字段映射，零协议逻辑**。
 //! - `danmakuData`（斗鱼=房间号）与 `quality.data`（斗鱼=`{"rate":..,"cdns":[..]}` JSON 串）
@@ -7,13 +7,13 @@
 //!
 //! 与 B站 `rust_site_models.dart` 的差别：独立文件、只服务斗鱼（多平台并行期间互不覆盖）。
 
-import 'package:simple_live_core/src/rust/api/slive/models/account.dart' as rust_acc;
-import 'package:simple_live_core/src/rust/api/slive/models/category.dart' as rust_cat;
-import 'package:simple_live_core/src/rust/api/slive/models/message.dart' as rust_msg;
-import 'package:simple_live_core/src/rust/api/slive/models/play.dart' as rust_play;
-import 'package:simple_live_core/src/rust/api/slive/models/result.dart' as rust_result;
-import 'package:simple_live_core/src/rust/api/slive/models/room.dart' as rust_room;
-import 'package:simple_live_core/simple_live_core.dart';
+import 'package:livecore/src/rust/api/slive/models/account.dart' as rust_acc;
+import 'package:livecore/src/rust/api/slive/models/category.dart' as rust_cat;
+import 'package:livecore/src/rust/api/slive/models/message.dart' as rust_msg;
+import 'package:livecore/src/rust/api/slive/models/play.dart' as rust_play;
+import 'package:livecore/src/rust/api/slive/models/result.dart' as rust_result;
+import 'package:livecore/src/rust/api/slive/models/room.dart' as rust_room;
+import 'package:livecore/livecore.dart';
 
 /// 斗鱼的 Rust -> core 模型映射集合（纯静态函数）。
 class RustDouyuModels {

@@ -4,7 +4,7 @@
     "platform": "huya",
     "synthetic": true,
     "derivation": "照 Dart core 逐字节推导：TARS 编码规则见 packages/tars_dart/tars/codec/tars_output_stream.dart，结构 tag 见 platforms/huya/tars/huya_danmaku.dart",
-    "frame_format_source": "simple_live_core/lib/src/platforms/huya/tars/huya_danmaku.dart",
+    "frame_format_source": "livecore/lib/src/platforms/huya/tars/huya_danmaku.dart",
     "needs_realtime_validation": true,
     "realtime_validation_plan": "连 wss://cdnws.api.huya.com:443，用 mitmproxy/charles 录制 cmdType=7/22 的真实帧，核对 HYPushMessage.protocolType、requestId/traceId 是否下发、以及 HYMessage 是否还有未列出的 tag；替换后把 _meta.synthetic 改 false。",
     "target_ac": [

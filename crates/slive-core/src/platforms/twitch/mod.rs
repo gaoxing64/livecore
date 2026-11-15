@@ -1,7 +1,7 @@
 //! Twitch 平台模块（IP-5）。
 //!
 //! 行为基准：
-//! - 详情 / 取流 / 弹幕：`simple_live_core/lib/src/platforms/twitch/*.dart`（旧 Dart core）；
+//! - 详情 / 取流 / 弹幕：`livecore/lib/src/platforms/twitch/*.dart`（旧 Dart core）；
 //! - 分类 / 首页推荐 / 搜索：PureLive `live_core/src/sites/twitch/*.dart`（本轮按该实现重写）。
 //!
 //! - HTTP 读链路：GQL（`gql.twitch.tv/gql`，**POST JSON**）+ usher m3u8（GET）；

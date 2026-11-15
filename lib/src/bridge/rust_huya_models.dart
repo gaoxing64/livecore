@@ -7,9 +7,9 @@
 //!
 //! 纪律：本文件**不出现** URL / 正则 / TARS / 字段计算；只做类型翻译。
 
-import 'package:simple_live_core/src/rust/api/slive/models/category.dart'
+import 'package:livecore/src/rust/api/slive/models/category.dart'
     as rust_cat;
-import 'package:simple_live_core/simple_live_core.dart';
+import 'package:livecore/livecore.dart';
 
 /// 虎牙专属的模型翻译集合（纯静态函数）。
 class RustHuyaModels {

@@ -91,7 +91,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
-        stem: 'rust_lib_simple_live_app',
+        stem: 'rust_lib_livecore',
         ioDirectory: 'target/release/',
         webPrefix: 'pkg/',
         wasmBindgenName: 'wasm_bindgen',

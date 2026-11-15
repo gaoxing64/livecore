@@ -5,10 +5,10 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "simple_live_core",
+            "name": "livecore",
             "request": "launch",
             "type": "dart",
-            "program": "example/simple_live_core_example.dart"
+            "program": "example/livecore_example.dart"
         }
     ]
 }

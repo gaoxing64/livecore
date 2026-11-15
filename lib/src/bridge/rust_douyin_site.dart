@@ -10,10 +10,10 @@
 //!    Rust 侧恒报错，这里不做「假装成功」的空实现；
 //! 3. 清晰度 `data` 通道是地址数组的 JSON 串（见 `RustDouyinModels`）。
 
-import 'package:simple_live_core/src/rust/api/slive/douyin.dart' as rust_douyin;
-import 'package:simple_live_core/src/rust/api/slive/models/danmu.dart' as rust_danmu;
-import 'package:simple_live_core/src/rust/api/slive/models/message.dart' as rust_msg;
-import 'package:simple_live_core/simple_live_core.dart';
+import 'package:livecore/src/rust/api/slive/douyin.dart' as rust_douyin;
+import 'package:livecore/src/rust/api/slive/models/danmu.dart' as rust_danmu;
+import 'package:livecore/src/rust/api/slive/models/message.dart' as rust_msg;
+import 'package:livecore/livecore.dart';
 
 import 'rust_danmaku_base.dart';
 import 'rust_douyin_models.dart';

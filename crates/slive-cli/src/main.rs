@@ -1,4 +1,4 @@
-//! `slive` —— Simple Live 命令行工具。
+//! `slive` —— Slive 命令行工具。
 //!
 //! 直连 `slive-core`（不经 flutter_rust_bridge），因此可做纯 Rust 单文件分发。
 
@@ -14,7 +14,7 @@ use slive_core::play::{self, RankPolicy};
 use url::{Platform, Target};
 
 const HELP: &str = "\
-slive —— Simple Live 命令行工具
+slive —— Slive 命令行工具
 
 用法:
   slive info <URL> [-q <清晰度>] [--all]   获取房间信息与播放直链

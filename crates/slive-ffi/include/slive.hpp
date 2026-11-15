@@ -1,4 +1,4 @@
-// slive.hpp — Simple Live C ABI 的 C++17 RAII 封装（Qt / MyGUI 直接 include）
+// slive.hpp — LiveCore C ABI 的 C++17 RAII 封装（Qt / MyGUI 直接 include）
 //
 // 用法：
 //   slive::Runtime rt;                              // 构造即 init，析构即 shutdown

@@ -1,4 +1,4 @@
-//! Simple Live C ABI。
+//! LiveCore C ABI。
 //!
 //! 设计要点：
 //! - 句柄是 `u64` 而非裸指针 —— 悬垂使用返回 `INVALID_HANDLE`，不是 UB；

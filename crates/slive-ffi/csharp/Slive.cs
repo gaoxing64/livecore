@@ -1,4 +1,4 @@
-// Slive.cs — Simple Live C ABI 的 C# P/Invoke 封装（net8.0 / WinUI 3）
+// Slive.cs — LiveCore C ABI 的 C# P/Invoke 封装（net8.0 / WinUI 3）
 //
 // 用法：
 //   using var rt = new Slive.Runtime(onComplete: (id, status, json) => { ... });

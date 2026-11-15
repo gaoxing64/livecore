@@ -2,8 +2,8 @@
   "_meta": {
     "kind": "emoticon-contract",
     "synthetic": false,
-    "source_of_truth": "simple_live_core/test/bilibili_emoticon_test.dart (31 条契约)",
-    "runtime_source": "simple_live_core/lib/src/platforms/bilibili/bilibili_emoticon.dart:1-300",
+    "source_of_truth": "livecore/test/bilibili_emoticon_test.dart (31 条契约)",
+    "runtime_source": "livecore/lib/src/platforms/bilibili/bilibili_emoticon.dart:1-300",
     "target_ac": [
       "AC-16"
     ],
@@ -31,7 +31,7 @@
     {
       "id": "EMO-01",
       "origin_test": "从 extra.emots 解析出占位符与图片地址",
-      "dart_source": "simple_live_core/test/bilibili_emoticon_test.dart:56",
+      "dart_source": "livecore/test/bilibili_emoticon_test.dart:56",
       "desc": "从 extra.emots 解析出占位符与图片地址",
       "input": {
         "info": [
@@ -101,7 +101,7 @@
     {
       "id": "EMO-02",
       "origin_test": "只保留 message 里出现过的占位符，未使用的不下发",
-      "dart_source": "simple_live_core/test/bilibili_emoticon_test.dart:74",
+      "dart_source": "livecore/test/bilibili_emoticon_test.dart:74",
       "desc": "只保留 message 里出现过的占位符，未使用的不下发",
       "input": {
         "info": [
@@ -156,7 +156,7 @@
     {
       "id": "EMO-03",
       "origin_test": "同一条弹幕可混排多个表情，顺序按 emots 下发顺序",
-      "dart_source": "simple_live_core/test/bilibili_emoticon_test.dart:88",
+      "dart_source": "livecore/test/bilibili_emoticon_test.dart:88",
       "desc": "同一条弹幕可混排多个表情，顺序按 emots 下发顺序",
       "input": {
         "info": [
@@ -210,7 +210,7 @@
     {
       "id": "EMO-04",
       "origin_test": "下发顺序与正文顺序相反时跟着 map 走",
-      "dart_source": "simple_live_core/test/bilibili_emoticon_test.dart:102",
+      "dart_source": "livecore/test/bilibili_emoticon_test.dart:102",
       "desc": "下发顺序与正文顺序相反时跟着 map 走",
       "input": {
         "info": [
@@ -264,7 +264,7 @@
     {
       "id": "EMO-05",
       "origin_test": "info[0][13] 与 extra.emots 同时下发同一张图时不重复",
-      "dart_source": "simple_live_core/test/bilibili_emoticon_test.dart:118",
+      "dart_source": "livecore/test/bilibili_emoticon_test.dart:118",
       "desc": "info[0][13] 与 extra.emots 同时下发同一张图时不重复",
       "input": {
         "info": [
@@ -324,7 +324,7 @@
     {
       "id": "EMO-06",
       "origin_test": "超过上限时在入口就挡下（extra 已满 8 时单表情不再入队）",
-      "dart_source": "simple_live_core/test/bilibili_emoticon_test.dart:136",
+      "dart_source": "livecore/test/bilibili_emoticon_test.dart:136",
       "desc": "超过上限时在入口就挡下（extra 已满 8 时单表情不再入队）",
       "input": {
         "info": [
@@ -384,7 +384,7 @@
     {
       "id": "EMO-07",
       "origin_test": "info[0][13] 单表情：message 是占位符时用它作为 name",
-      "dart_source": "simple_live_core/test/bilibili_emoticon_test.dart:156",
+      "dart_source": "livecore/test/bilibili_emoticon_test.dart:156",
       "desc": "info[0][13] 单表情：message 是占位符时用它作为 name",
       "input": {
         "info": [
@@ -452,7 +452,7 @@
     {
       "id": "EMO-08",
       "origin_test": "info[0][13] 单表情：message 不是占位符时 name 为 null",
-      "dart_source": "simple_live_core/test/bilibili_emoticon_test.dart:170",
+      "dart_source": "livecore/test/bilibili_emoticon_test.dart:170",
       "desc": "info[0][13] 单表情：message 不是占位符时 name 为 null",
       "input": {
         "info": [
@@ -511,7 +511,7 @@
     {
       "id": "EMO-09",
       "origin_test": "info[0][13] 单表情：message 是不带方括号的表情名时整串作为 name",
-      "dart_source": "simple_live_core/test/bilibili_emoticon_test.dart:182",
+      "dart_source": "livecore/test/bilibili_emoticon_test.dart:182",
       "desc": "info[0][13] 单表情：message 是不带方括号的表情名时整串作为 name",
       "input": {
         "info": [
@@ -571,7 +571,7 @@
     {
       "id": "EMO-10",
       "origin_test": "info[0][13] 是空对象字符串时不产生表情",
-      "dart_source": "simple_live_core/test/bilibili_emoticon_test.dart:197",
+      "dart_source": "livecore/test/bilibili_emoticon_test.dart:197",
       "desc": "info[0][13] 是空对象字符串时不产生表情",
       "input": {
         "info": [
@@ -621,7 +621,7 @@
     {
       "id": "EMO-11",
       "origin_test": "info[0][13] 单表情：只含一个对象的数组形态同样支持",
-      "dart_source": "simple_live_core/test/bilibili_emoticon_test.dart:203",
+      "dart_source": "livecore/test/bilibili_emoticon_test.dart:203",
       "desc": "info[0][13] 单表情：只含一个对象的数组形态同样支持",
       "input": {
         "info": [
@@ -687,7 +687,7 @@
     {
       "id": "EMO-12",
       "origin_test": "emots 的 key 不是 [xxx] 占位符形态时丢弃，避免子串替换吞正文",
-      "dart_source": "simple_live_core/test/bilibili_emoticon_test.dart:218",
+      "dart_source": "livecore/test/bilibili_emoticon_test.dart:218",
       "desc": "emots 的 key 不是 [xxx] 占位符形态时丢弃，避免子串替换吞正文",
       "input": {
         "info": [
@@ -737,7 +737,7 @@
     {
       "id": "EMO-13",
       "origin_test": "key 不带方括号但整条弹幕就是它时命中（如「冲鸭」）",
-      "dart_source": "simple_live_core/test/bilibili_emoticon_test.dart:231",
+      "dart_source": "livecore/test/bilibili_emoticon_test.dart:231",
       "desc": "key 不带方括号但整条弹幕就是它时命中（如「冲鸭」）",
       "input": {
         "info": [
@@ -796,7 +796,7 @@
     {
       "id": "EMO-14",
       "origin_test": "key 不带方括号且夹在正文里时仍然丢弃，不做子串替换",
-      "dart_source": "simple_live_core/test/bilibili_emoticon_test.dart:248",
+      "dart_source": "livecore/test/bilibili_emoticon_test.dart:248",
       "desc": "key 不带方括号且夹在正文里时仍然丢弃，不做子串替换",
       "input": {
         "info": [
@@ -846,7 +846,7 @@
     {
       "id": "EMO-15",
       "origin_test": "整条弹幕与 key 相等时忽略首尾空白",
-      "dart_source": "simple_live_core/test/bilibili_emoticon_test.dart:259",
+      "dart_source": "livecore/test/bilibili_emoticon_test.dart:259",
       "desc": "整条弹幕与 key 相等时忽略首尾空白",
       "input": {
         "info": [
@@ -897,7 +897,7 @@
     {
       "id": "EMO-16",
       "origin_test": "info[0][13] 带 url 但 message 夹带正文时退回追加，不整串替换",
-      "dart_source": "simple_live_core/test/bilibili_emoticon_test.dart:272",
+      "dart_source": "livecore/test/bilibili_emoticon_test.dart:272",
       "desc": "info[0][13] 带 url 但 message 夹带正文时退回追加，不整串替换",
       "input": {
         "info": [
@@ -952,7 +952,7 @@
     {
       "id": "EMO-17",
       "origin_test": "emots 裸名整串命中时记 large",
-      "dart_source": "simple_live_core/test/bilibili_emoticon_test.dart:284",
+      "dart_source": "livecore/test/bilibili_emoticon_test.dart:284",
       "desc": "emots 裸名整串命中时记 large",
       "input": {
         "info": [
@@ -1002,7 +1002,7 @@
     {
       "id": "EMO-18a",
       "origin_test": "large 区分两种下发方式（单表情 large=true）",
-      "dart_source": "simple_live_core/test/bilibili_emoticon_test.dart:297",
+      "dart_source": "livecore/test/bilibili_emoticon_test.dart:297",
       "desc": "large 区分两种下发方式（单表情 large=true）",
       "input": {
         "info": [
@@ -1061,7 +1061,7 @@
     {
       "id": "EMO-18b",
       "origin_test": "large 区分两种下发方式（emots 占位符 large=false）",
-      "dart_source": "simple_live_core/test/bilibili_emoticon_test.dart:297",
+      "dart_source": "livecore/test/bilibili_emoticon_test.dart:297",
       "desc": "large 区分两种下发方式（emots 占位符 large=false）",
       "input": {
         "info": [
@@ -1115,7 +1115,7 @@
     {
       "id": "EMO-19",
       "origin_test": "大表情弹幕的真实载荷：info[0] 没有第 15 位也能解析",
-      "dart_source": "simple_live_core/test/bilibili_emoticon_test.dart:318",
+      "dart_source": "livecore/test/bilibili_emoticon_test.dart:318",
       "desc": "大表情弹幕的真实载荷：info[0] 没有第 15 位也能解析",
       "input": {
         "info": [
@@ -1179,7 +1179,7 @@
     {
       "id": "EMO-20",
       "origin_test": "extra 与 info[0][13] 是同一张图时，large 不因 extra 先入队而丢失",
-      "dart_source": "simple_live_core/test/bilibili_emoticon_test.dart:335",
+      "dart_source": "livecore/test/bilibili_emoticon_test.dart:335",
       "desc": "extra 与 info[0][13] 是同一张图时，large 不因 extra 先入队而丢失",
       "input": {
         "info": [
@@ -1238,7 +1238,7 @@
     {
       "id": "EMO-21",
       "origin_test": "占位符与正文混排时不整串替换（异常载荷兜底）",
-      "dart_source": "simple_live_core/test/bilibili_emoticon_test.dart:352",
+      "dart_source": "livecore/test/bilibili_emoticon_test.dart:352",
       "desc": "占位符与正文混排时不整串替换（异常载荷兜底）",
       "input": {
         "info": [
@@ -1293,7 +1293,7 @@
     {
       "id": "EMO-22a",
       "origin_test": "裸表情名的长度上限是 12 字（12 字命中）",
-      "dart_source": "simple_live_core/test/bilibili_emoticon_test.dart:366",
+      "dart_source": "livecore/test/bilibili_emoticon_test.dart:366",
       "desc": "裸表情名的长度上限是 12 字（12 字命中）",
       "input": {
         "info": [
@@ -1349,7 +1349,7 @@
     {
       "id": "EMO-22b",
       "origin_test": "裸表情名的长度上限是 12 字（13 字拒绝）",
-      "dart_source": "simple_live_core/test/bilibili_emoticon_test.dart:376",
+      "dart_source": "livecore/test/bilibili_emoticon_test.dart:376",
       "desc": "裸表情名的长度上限是 12 字（13 字拒绝）",
       "input": {
         "info": [
@@ -1404,7 +1404,7 @@
     {
       "id": "EMO-23",
       "origin_test": "无空白的「表情名+正文」按整串替换处理（已知取舍，锁预期）",
-      "dart_source": "simple_live_core/test/bilibili_emoticon_test.dart:386",
+      "dart_source": "livecore/test/bilibili_emoticon_test.dart:386",
       "desc": "无空白的「表情名+正文」按整串替换处理（已知取舍，锁预期）",
       "input": {
         "info": [
@@ -1460,7 +1460,7 @@
     {
       "id": "EMO-24a",
       "origin_test": "extra 的裸名 key 与单表情路径共用判据（超长裸名拒绝）",
-      "dart_source": "simple_live_core/test/bilibili_emoticon_test.dart:400",
+      "dart_source": "livecore/test/bilibili_emoticon_test.dart:400",
       "desc": "extra 的裸名 key 与单表情路径共用判据（超长裸名拒绝）",
       "input": {
         "info": [
@@ -1510,7 +1510,7 @@
     {
       "id": "EMO-24b",
       "origin_test": "extra 的裸名 key 与单表情路径共用判据（含空白裸名拒绝）",
-      "dart_source": "simple_live_core/test/bilibili_emoticon_test.dart:412",
+      "dart_source": "livecore/test/bilibili_emoticon_test.dart:412",
       "desc": "extra 的裸名 key 与单表情路径共用判据（含空白裸名拒绝）",
       "input": {
         "info": [
@@ -1560,7 +1560,7 @@
     {
       "id": "EMO-25",
       "origin_test": "图片地址统一升到 https",
-      "dart_source": "simple_live_core/test/bilibili_emoticon_test.dart:421",
+      "dart_source": "livecore/test/bilibili_emoticon_test.dart:421",
       "desc": "图片地址统一升到 https",
       "input": {
         "info": [
@@ -1614,7 +1614,7 @@
     {
       "id": "EMO-26",
       "origin_test": "丢掉不能用的图片地址（相对路径/ftp/缺 url）",
-      "dart_source": "simple_live_core/test/bilibili_emoticon_test.dart:441",
+      "dart_source": "livecore/test/bilibili_emoticon_test.dart:441",
       "desc": "丢掉不能用的图片地址（相对路径/ftp/缺 url）",
       "input": {
         "info": [
@@ -1664,7 +1664,7 @@
     {
       "id": "EMO-27",
       "origin_test": "extra 不是合法 JSON 时不抛异常",
-      "dart_source": "simple_live_core/test/bilibili_emoticon_test.dart:454",
+      "dart_source": "livecore/test/bilibili_emoticon_test.dart:454",
       "desc": "extra 不是合法 JSON 时不抛异常",
       "input": {
         "info": [
@@ -1714,7 +1714,7 @@
     {
       "id": "EMO-28a",
       "origin_test": "异常载荷返回 null：info == null",
-      "dart_source": "simple_live_core/test/bilibili_emoticon_test.dart:470",
+      "dart_source": "livecore/test/bilibili_emoticon_test.dart:470",
       "desc": "异常载荷返回 null：info == null",
       "input": {
         "info": null,
@@ -1729,7 +1729,7 @@
     {
       "id": "EMO-28b",
       "origin_test": "异常载荷返回 null 而不是崩溃",
-      "dart_source": "simple_live_core/test/bilibili_emoticon_test.dart:471",
+      "dart_source": "livecore/test/bilibili_emoticon_test.dart:471",
       "desc": "异常载荷返回 null：info == []",
       "input": {
         "info": [],
@@ -1744,7 +1744,7 @@
     {
       "id": "EMO-28c",
       "origin_test": "异常载荷返回 null 而不是崩溃",
-      "dart_source": "simple_live_core/test/bilibili_emoticon_test.dart:472",
+      "dart_source": "livecore/test/bilibili_emoticon_test.dart:472",
       "desc": "异常载荷返回 null：info == [0,'x']",
       "input": {
         "info": [
@@ -1762,7 +1762,7 @@
     {
       "id": "EMO-28d",
       "origin_test": "异常载荷返回 null 而不是崩溃",
-      "dart_source": "simple_live_core/test/bilibili_emoticon_test.dart:473",
+      "dart_source": "livecore/test/bilibili_emoticon_test.dart:473",
       "desc": "异常载荷返回 null：info == [[], 'x']",
       "input": {
         "info": [
@@ -1780,7 +1780,7 @@
     {
       "id": "EMO-28e",
       "origin_test": "异常载荷返回 null 而不是崩溃",
-      "dart_source": "simple_live_core/test/bilibili_emoticon_test.dart:476",
+      "dart_source": "livecore/test/bilibili_emoticon_test.dart:476",
       "desc": "异常载荷返回 null：info[0] 长度不足",
       "input": {
         "info": [
@@ -1801,7 +1801,7 @@
     {
       "id": "EMO-29",
       "origin_test": "单条弹幕的表情数量有上限（30 个占位符 → 8）",
-      "dart_source": "simple_live_core/test/bilibili_emoticon_test.dart:484",
+      "dart_source": "livecore/test/bilibili_emoticon_test.dart:484",
       "desc": "单条弹幕的表情数量有上限（30 个占位符 → 8）",
       "input": {
         "info": [
@@ -1852,7 +1852,7 @@
     {
       "id": "EMO-30",
       "origin_test": "emots 与 info[0][13] 同时存在时不重复（保留 emots 版本）",
-      "dart_source": "simple_live_core/test/bilibili_emoticon_test.dart:497",
+      "dart_source": "livecore/test/bilibili_emoticon_test.dart:497",
       "desc": "emots 与 info[0][13] 同时存在时不重复（保留 emots 版本）",
       "input": {
         "info": [

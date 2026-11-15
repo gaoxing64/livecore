@@ -1,5 +1,5 @@
 //! 抖音弹幕 protobuf 结构：**手写 `prost::Message`**，对照
-//! `simple_live_core/lib/src/platforms/douyin/proto/douyin.proto`。
+//! `livecore/lib/src/platforms/douyin/proto/douyin.proto`。
 //!
 //! 为何手写（免 protoc/build.rs）：
 //! - §4.1 依赖锁定只预置 `prost 0.12`，不引入构建期工具链（NDK 交叉编译更稳）；

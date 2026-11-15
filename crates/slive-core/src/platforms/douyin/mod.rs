@@ -1,6 +1,6 @@
 //! 抖音(douyin)平台模块（IP-6）。
 //!
-//! 行为基准唯一：`simple_live_core/lib/src/platforms/douyin/`（`douyin_site.dart`
+//! 行为基准唯一：`livecore/lib/src/platforms/douyin/`（`douyin_site.dart`
 //! 1300 行 / `douyin_danmaku.dart` 239 / `abogus.dart` 732 / `xbogus.dart` 133）。
 //! 模块划分沿用 B站范式（`site.rs` 仅编排 + 按能力拆文件），依赖只向下：
 //! `platforms::douyin` -> `models` / `http` / `ws` / `error`，**不依赖 FRB**。

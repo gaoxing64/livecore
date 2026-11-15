@@ -1,3 +1,10 @@
+## 2.0.0
+
+- 独立仓库更名为 `livecore`，Dart 包名同步改为 `livecore`。
+- Flutter Rust Bridge 构建插件更名为 `rust_lib_livecore`。
+- 新增可供外部仓库调用的 C ABI GitHub Actions workflow，覆盖 Linux、macOS 与 Windows，
+  并在版本 tag 上自动附加 C、C++、C# 所需求的头文件和原生库。
+
 ## 1.1.0
 
 - `LiveSite.getRecommendRooms` / `getCategoryRooms` 新增可选具名参数 `pageSize`：

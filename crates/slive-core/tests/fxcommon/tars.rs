@@ -1,6 +1,6 @@
 //! TARS 最小读取工具（虎牙夹具专用，从 `mod.rs` 拆出以守≤300 行门禁）。
 //!
-//! 对齐 `simple_live_core/packages/tars_dart/lib/tars/codec/tars_output_stream.dart`
+//! 对齐 `livecore/packages/tars_dart/lib/tars/codec/tars_output_stream.dart`
 //! 的编码规则：字段头 1 字节 `tag<<4 | type`（`tag == 15` 时续 1 字节），
 //! 整数按值域选宽且一律**大端**。
 //!

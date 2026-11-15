@@ -2,7 +2,7 @@
 name = "slive-host"
 version = "0.1.0"
 edition = "2021"
-description = "Simple Live 宿主层：真实连接装配 + 弹幕会话，供 CLI / FRB 桥 / C ABI 共用"
+description = "LiveCore 宿主层：真实连接装配 + 弹幕会话，供 CLI / FRB 桥 / C ABI 共用"
 publish = false
 
 [dependencies]

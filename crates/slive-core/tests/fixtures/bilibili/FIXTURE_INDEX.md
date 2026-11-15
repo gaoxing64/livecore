@@ -6,7 +6,7 @@
 
 | 夹具 | AC | 来源 | 就绪度 |
 |------|----|------|--------|
-| `emoticon/emoticon-cases.json` | AC-16 | `simple_live_core/test/bilibili_emoticon_test.dart`（31 契约 → 37 断言组） | [就绪] |
+| `emoticon/emoticon-cases.json` | AC-16 | `livecore/test/bilibili_emoticon_test.dart`（31 契约 → 37 断言组） | [就绪] |
 
 ## 确定性 golden（AC-11 / AC-21 / AC-35）
 

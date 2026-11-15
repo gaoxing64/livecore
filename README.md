@@ -1,6 +1,6 @@
-# simple_live_core
+# livecore
 
-项目核心库。**协议实现 100% 在 Rust**（`crates/slive-core`），Dart 侧只保留跨平台模型与
+LiveCore 核心库。**协议实现 100% 在 Rust**（`crates/slive-core`），Dart 侧只保留跨平台模型与
 FRB 绑定层 —— 不存在并行的 Dart 协议实现。
 
 ## 目录
@@ -17,13 +17,13 @@ FRB 绑定层 —— 不存在并行的 Dart 协议实现。
 | `lib/src/rust/` | FRB **Dart 生成物**（已入库） |
 | `lib/src/bridge/` | **Dart 绑定层**（`rust_*_site.dart`：FRB 模型 ↔ Dart 模型 1:1 翻译，零协议逻辑） |
 | `lib/src/{model,interface}/` | App/TV 消费的跨平台模型与 `LiveSite`/`LiveDanmaku` 契约 |
-| `rust_builder/` | cargokit 构建插件（包名 `rust_lib_simple_live_app`，5 平台） |
+| `rust_builder/` | cargokit 构建插件（包名 `rust_lib_livecore`，5 平台） |
 | `flutter_rust_bridge.yaml` | codegen 配置（`rust_root: .` / `dart_output: lib/src/rust`） |
 
 ## 跑测试（无需 Flutter 工具链）
 
 ```bash
-cd simple_live_core
+cd livecore
 cargo test                       # 全量（990 用例）
 cargo test -p slive-core         # 仅纯核心
 cargo test -p slive-cli          # 仅 CLI（URL 解析）
@@ -33,7 +33,7 @@ cargo clippy --all-targets       # 静态检查
 ## 命令行
 
 ```bash
-cd simple_live_core
+cd livecore
 cargo build -p slive-cli --release
 ./target/release/slive info    https://live.bilibili.com/7734200
 ./target/release/slive danmaku https://live.bilibili.com/6
@@ -72,14 +72,14 @@ Twitch 的分类、首页推荐与搜索按 PureLive `live_core` 的 Twitch 实�
 
 ## 重跑 codegen
 
-改了 `src/api/**` 后，在 `simple_live_core/` 下按 `flutter_rust_bridge.yaml` 生成
+改了 `src/api/**` 后，在 `livecore/` 下按 `flutter_rust_bridge.yaml` 生成
 （`rust_input: crate::api` 自动扫描）；生成物入库。**两侧版本必须都是 2.13.0**。
 
 ## 构建入口
 
-主 App `simple_live_app/` 与 TV app `simple_live_tv_app/` 均以
-`path: ../simple_live_core/rust_builder` 依赖 cargokit 插件，共用同一 crate 与同一份生成物；
-Dart 侧统一 `import 'package:simple_live_core/simple_live_core.dart'`（绑定层经库出口暴露，
+主 App `simple_live_app/` 与 TV app `simple_live_tv_app/` 从
+`https://github.com/gaoxing64/livecore` 获取 Dart 包和 `rust_builder` 插件，共用同一 crate
+与同一份生成物；`pubspec.lock` 锁定实际 commit。Dart 侧统一 `import 'package:livecore/livecore.dart'`（绑定层经库出口暴露，
 `RustLib.init()` 见 `frb_generated.dart` 出口）。
 
 设计文档（`docs/rust-core/`、`docs/decisions/` 与 `doc/` 知识库）已归档至备份分支
@@ -96,15 +96,49 @@ Dart 侧统一 `import 'package:simple_live_core/simple_live_core.dart'`（绑�
 | C# / WinUI 3 | `csharp/Slive.cs`（P/Invoke + `TaskCompletionSource`） |
 | 裸 C | `include/slive.h` |
 
-### 构建 C ABI（Windows）
+### GitHub Actions 构建与下载 C ABI
+
+`LiveCore C ABI` workflow 会为 Linux x64/ARM64、macOS x64/ARM64 和 Windows x64 编译动态库、
+静态库、C/C++ 头文件与 C# P/Invoke 包装器。推送 `v*` tag 后，workflow 会将各目标包附加到
+GitHub Release；手动运行或从其他仓库调用时，构建包会作为 Actions artifact 提供。
+
+其他仓库可以调用公开的 reusable workflow：
+
+```yaml
+jobs:
+  livecore-c-abi:
+    uses: gaoxing64/livecore/.github/workflows/build-c-abi.yml@future
+    with:
+      source_ref: future
+```
+
+`source_ref` 可指定 LiveCore 的分支、tag 或 commit。调用方 workflow 的运行页面会显示并保存
+各目标 artifact。
+
+### 本机编译 C ABI
+
+在 LiveCore 仓库根目录运行以下命令，可按本机 Rust target 编译：
+
+```bash
+cargo build --locked --release -p slive-ffi
+```
+
+Windows 可用脚本编译 MSVC x64：
 
 ```powershell
-cd simple_live_core
 .\crates\slive-ffi\build.ps1 -Release          # 产出 slive_ffi.dll + slive_ffi.lib
 .\crates\slive-ffi\build.ps1 -Release -StaticCrt  # 静态 CRT（宿主必须同口径）
 ```
 
-产物在 `target/x86_64-pc-windows-msvc/release/`。头文件已入库，无需 cbindgen。
+指定 Rust target 时可直接运行：
+
+```bash
+cargo build --locked --release -p slive-ffi --target <rust-target>
+```
+
+产物位于 `target/<rust-target>/release/`；不指定 target 时位于 `target/release/`。
+Linux 本机编译需要 OpenSSL 开发文件和 `pkg-config`，运行动态库的系统也需要兼容的 OpenSSL
+运行库。C/C++ 头文件已入库，无需 cbindgen。
 
 ### 调用模型
 

@@ -1,7 +1,7 @@
-import 'package:simple_live_core/src/common/qr_status.dart';
-import 'package:simple_live_core/src/model/account_info.dart';
-import 'package:simple_live_core/src/model/account_qr_code.dart';
-import 'package:simple_live_core/src/model/live_anchor_item.dart';
+import 'package:livecore/src/common/qr_status.dart';
+import 'package:livecore/src/model/account_info.dart';
+import 'package:livecore/src/model/account_qr_code.dart';
+import 'package:livecore/src/model/live_anchor_item.dart';
 
 import '../interface/live_danmaku.dart';
 import '../model/live_category_result.dart';

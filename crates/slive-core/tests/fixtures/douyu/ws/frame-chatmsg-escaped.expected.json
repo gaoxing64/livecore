@@ -5,7 +5,7 @@
     "synthetic": true,
     "derivation": "照 Dart core douyu_danmaku.dart 的 STT 协议与 12 字节小端包头逐字段推导（行号见各帧 dart_source / note）；STT 语法与转义见 :196-228",
     "needs_realtime_validation": true,
-    "frame_format_source": "simple_live_core/lib/src/platforms/douyu/douyu_danmaku.dart:152-193",
+    "frame_format_source": "livecore/lib/src/platforms/douyu/douyu_danmaku.dart:152-193",
     "realtime_validation_plan": "用 wscat/mitm 抓 wss://danmuproxy.douyu.com:8506 真实帧，核对 packType 取值（客户端 689 / 服务端实际值）、STT 字段名与转义出现频率；替换本目录 *.bin 并把 _meta.synthetic 改为 false。",
     "target_ac": [
       "IP-3-DANMAKU"

@@ -1,16 +1,16 @@
-//! Rust Core 模型 -> simple_live_core 模型的类型翻译层。
+//! Rust Core 模型 -> livecore 模型的类型翻译层。
 //!
 //! 纪律（AC-39 / J-6）：只做逐字段映射，零协议逻辑；`danmakuData` 与
 //! `quality.data` **原样透传**（App 侧 `liveDanmaku.start(detail.danmakuData)`
 //! 直接消费，不在绑定层解析 —— J-10 解析责任在 Rust 侧 `CoreError`）。
 
-import 'package:simple_live_core/src/rust/api/slive/models/account.dart' as rust_acc;
-import 'package:simple_live_core/src/rust/api/slive/models/category.dart' as rust_cat;
-import 'package:simple_live_core/src/rust/api/slive/models/message.dart' as rust_msg;
-import 'package:simple_live_core/src/rust/api/slive/models/play.dart' as rust_play;
-import 'package:simple_live_core/src/rust/api/slive/models/result.dart' as rust_result;
-import 'package:simple_live_core/src/rust/api/slive/models/room.dart' as rust_room;
-import 'package:simple_live_core/simple_live_core.dart';
+import 'package:livecore/src/rust/api/slive/models/account.dart' as rust_acc;
+import 'package:livecore/src/rust/api/slive/models/category.dart' as rust_cat;
+import 'package:livecore/src/rust/api/slive/models/message.dart' as rust_msg;
+import 'package:livecore/src/rust/api/slive/models/play.dart' as rust_play;
+import 'package:livecore/src/rust/api/slive/models/result.dart' as rust_result;
+import 'package:livecore/src/rust/api/slive/models/room.dart' as rust_room;
+import 'package:livecore/livecore.dart';
 
 /// Rust -> core 的模型映射集合（纯静态函数）。
 class RustSiteModels {

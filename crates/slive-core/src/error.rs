@@ -3,7 +3,7 @@
 //! 两层：
 //! - [`SliveError`]（thiserror）：core 层错误，`platforms` 层方法统一返回它，**可枚举匹配**（AC-17/AC-23/AC-25 断言依据）。
 //! - [`CoreError`]：FRB 可见的强类型错误 `{message, status_code}`；由 [`From<SliveError>`] 映射，
-//!   供桥层还原 Dart `simple_live_core::CoreError`（两路径收敛到同一异常类型）。
+//!   供桥层还原 Dart `livecore::CoreError`（两路径收敛到同一异常类型）。
 
 use std::fmt;
 

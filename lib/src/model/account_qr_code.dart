@@ -1,4 +1,4 @@
-﻿import 'package:simple_live_core/src/common/qr_status.dart';
+﻿import 'package:livecore/src/common/qr_status.dart';
 
 class QRCode {
   final String key;

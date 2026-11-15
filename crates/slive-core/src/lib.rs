@@ -1,4 +1,4 @@
-//! Simple Live 纯核心 crate。
+//! LiveCore 纯核心 crate。
 //!
 //! 分层（只向下依赖）：
 //! `platforms` -> `models`/`http`/`error`；`models` 不依赖 `platforms`。

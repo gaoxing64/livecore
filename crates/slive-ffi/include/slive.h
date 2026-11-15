@@ -1,4 +1,4 @@
-/* slive.h — Simple Live C ABI
+/* slive.h — LiveCore C ABI
  *
  * 所有字符串为 UTF-8 + 显式长度（非 NUL 结尾）：日志可能含 '\0'。
  * 所有出参 SliveStr 必须由调用方 slive_str_free 释放。

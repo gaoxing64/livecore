@@ -1,18 +1,18 @@
 //! DoD-3 端到端冒烟（联网，手动执行）：
-//! `cargo test -p rust_lib_simple_live_app --test manual_e2e -- --ignored --nocapture`
+//! `cargo test -p rust_lib_livecore --test manual_e2e -- --ignored --nocapture`
 //!
 //! 固定房间 6：详情 → 清晰度 → 取流 → 弹幕 30s 窗口；另覆盖一条错误流（不存在的房间 → 类型化错误，AC-23）。
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
-use rust_lib_simple_live_app::api::slive::danmaku::connect_ws_frame_source;
+use rust_lib_livecore::api::slive::danmaku::connect_ws_frame_source;
 use slive_core::platforms::bilibili::BilibiliSite;
 use slive_core::time::SystemClock;
 use slive_core::ws::{run_session, ConnectFactory, SessionTuning};
 
 #[tokio::test(flavor = "multi_thread")]
-#[ignore = "联网冒烟：手动执行 cargo test -p rust_lib_simple_live_app --test manual_e2e -- --ignored --nocapture"]
+#[ignore = "联网冒烟：手动执行 cargo test -p rust_lib_livecore --test manual_e2e -- --ignored --nocapture"]
 async fn dod3_bilibili_end_to_end() {
     let site = BilibiliSite::new();
     let room_id = "6";

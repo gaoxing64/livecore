@@ -1,4 +1,4 @@
-//! 跨平台强类型模型（与 Dart core `simple_live_core/lib/src/model/*` 同构）。
+//! 跨平台强类型模型（与 Dart core `livecore/lib/src/model/*` 同构）。
 //!
 //! 本模块**不含**任何 `#[frb]` 标注；FRB 侧通过桥 crate 的 `#[frb(mirror)]` 暴露。
 //! 字段语义保留 Dart core 契约（`children` / `emoticons` / `color` / `data`），命名风格对齐上游 `Live*`。

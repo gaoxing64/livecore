@@ -1,4 +1,4 @@
-//! 抖音签名（a_bogus / X-Bogus），逐字节对齐 Dart `simple_live_core/lib/src/platforms/douyin/`。
+//! 抖音签名（a_bogus / X-Bogus），逐字节对齐 Dart `livecore/lib/src/platforms/douyin/`。
 //!
 //! 唯一行为基准：`abogus.dart`（732 行）+ `xbogus.dart`（133 行）。
 //! golden 由 **Dart 实跑**产出（见 `tests/ac_douyin_signature.rs`），不是自证。

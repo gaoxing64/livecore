@@ -1,4 +1,4 @@
-//! Rust Core 模型 -> simple_live_core 模型的类型翻译层（抖音专属）。
+//! Rust Core 模型 -> livecore 模型的类型翻译层（抖音专属）。
 //!
 //! 纪律（AC-39 / J-6）：只做逐字段映射，零协议逻辑；`danmakuData`、`detail.data`、
 //! `quality.data` 三个通道**原样透传**（不在绑定层解析 —— J-10：解析责任在 Rust 侧，
@@ -12,11 +12,11 @@
 
 import 'dart:convert';
 
-import 'package:simple_live_core/src/rust/api/slive/models/account.dart' as rust_acc;
-import 'package:simple_live_core/src/rust/api/slive/models/message.dart' as rust_msg;
-import 'package:simple_live_core/src/rust/api/slive/models/play.dart' as rust_play;
-import 'package:simple_live_core/src/rust/api/slive/models/room.dart' as rust_room;
-import 'package:simple_live_core/simple_live_core.dart';
+import 'package:livecore/src/rust/api/slive/models/account.dart' as rust_acc;
+import 'package:livecore/src/rust/api/slive/models/message.dart' as rust_msg;
+import 'package:livecore/src/rust/api/slive/models/play.dart' as rust_play;
+import 'package:livecore/src/rust/api/slive/models/room.dart' as rust_room;
+import 'package:livecore/livecore.dart';
 
 /// 抖音专用的 Rust <-> core 模型翻译（纯静态函数，零协议逻辑）。
 class RustDouyinModels {

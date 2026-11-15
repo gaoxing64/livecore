@@ -1,5 +1,5 @@
 [package]
-name = "rust_lib_simple_live_app"
+name = "rust_lib_livecore"
 version = "0.1.0"
 edition = "2021"
 

@@ -2,7 +2,7 @@
 name = "slive-core"
 version = "0.1.0"
 edition = "2021"
-description = "Simple Live 纯核心 crate（无 FRB 依赖，供 Flutter/FRB/Tauri 等前端复用）"
+description = "LiveCore 纯核心 crate（无 FRB 依赖，供 Flutter/FRB/Tauri 等前端复用）"
 publish = false
 
 [lib]

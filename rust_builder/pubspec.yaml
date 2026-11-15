@@ -1,4 +1,4 @@
-name: rust_lib_simple_live_app
+name: rust_lib_livecore
 description: "Utility to build Rust code"
 version: 0.0.1
 publish_to: none

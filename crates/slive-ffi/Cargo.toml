@@ -2,7 +2,7 @@
 name = "slive-ffi"
 version = "0.1.0"
 edition = "2021"
-description = "Simple Live C ABI：供 C#/WinUI3、C++/Qt/MyGUI、Rust 直接调用"
+description = "LiveCore C ABI：供 C#/WinUI3、C++/Qt/MyGUI、Rust 直接调用"
 publish = false
 
 [lib]

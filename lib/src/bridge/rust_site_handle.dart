@@ -1,6 +1,6 @@
 //! 五个站点共享的「FRB 句柄 + attrs 暂存」机制。
 
-import 'package:simple_live_core/simple_live_core.dart';
+import 'package:livecore/livecore.dart';
 
 /// 站点句柄骨架：FRB 句柄类型 [H] 各平台不同（`LiveBilibiliSite` 等），
 /// 懒初始化与 attrs 暂存/下发逻辑全平台一致。

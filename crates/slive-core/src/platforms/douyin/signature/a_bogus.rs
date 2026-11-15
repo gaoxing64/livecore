@@ -1,4 +1,4 @@
-//! a_bogus 签名（逐字节移植 Dart `simple_live_core/lib/src/platforms/douyin/abogus.dart`）。
+//! a_bogus 签名（逐字节移植 Dart `livecore/lib/src/platforms/douyin/abogus.dart`）。
 //!
 //! # 与 Dart 的对应关系
 //! | Rust | Dart |

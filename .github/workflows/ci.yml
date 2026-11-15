@@ -2,8 +2,15 @@ name: core-ci
 
 on:
   push:
-    branches: [future, master, dev]
+    branches: [future, master]
   pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: core-ci-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:

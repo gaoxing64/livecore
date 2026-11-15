@@ -1,108 +1,236 @@
-# livecore
+# LiveCore
 
-LiveCore 核心库。**协议实现 100% 在 Rust**（`crates/slive-core`），Dart 侧只保留跨平台模型与
-FRB 绑定层 —— 不存在并行的 Dart 协议实现。
+[![Core CI](https://github.com/gaoxing64/livecore/actions/workflows/ci.yml/badge.svg?branch=future)](https://github.com/gaoxing64/livecore/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/gaoxing64/livecore)](https://github.com/gaoxing64/livecore/releases)
 
-## 目录
+LiveCore 是一个面向直播应用、命令行工具和非 Dart 宿主的聚合直播核心库。直播平台的
+协议、数据处理和会话管理均在 Rust 中实现；Dart 层仅提供跨平台模型、接口定义和
+Flutter Rust Bridge（FRB）类型翻译。
 
-| 路径 | 内容 |
-|------|------|
-| `Cargo.toml` / `Cargo.lock` | Rust workspace 根（成员：`slive-core`、`slive-cli`） |
-| `crates/slive-core/` | **纯核心 crate**（零 FRB 依赖）：`platforms/{bilibili,douyu,huya,twitch,douyin,kuaishou,acfun,weibo,xiaohongshu,youtube}`、`tars/`、`ws/`、`http/`、`time/`、`models/` |
-| `crates/slive-cli/` | 命令行工具 `slive`：只依赖 `slive-core` + `slive-host`，**不经过 FRB** |
-| `crates/slive-host/` | **宿主层**：真实 WS/TCP 连接 + 弹幕会话装配（B站/斗鱼/虎牙/抖音/Twitch）（CLI / FRB 桥 / C ABI 共用） |
-| `crates/slive-ffi/` | **C ABI**（`cdylib`/`staticlib`）：`include/slive.h` + `slive.hpp`(C++) + `csharp/Slive.cs`(WinUI3) |
-| `src/` | FRB 桥层（`api/slive/**`；含既有 `danmaku_mask` 模块）+ `frb_generated.rs` |
-| `crates/slive-core/tests/` | 集成测试 + 离线夹具（`tests/fixtures/{platform}/`） |
-| `lib/src/rust/` | FRB **Dart 生成物**（已入库） |
-| `lib/src/bridge/` | **Dart 绑定层**（`rust_*_site.dart`：FRB 模型 ↔ Dart 模型 1:1 翻译，零协议逻辑） |
-| `lib/src/{model,interface}/` | App/TV 消费的跨平台模型与 `LiveSite`/`LiveDanmaku` 契约 |
-| `rust_builder/` | cargokit 构建插件（包名 `rust_lib_livecore`，5 平台） |
-| `flutter_rust_bridge.yaml` | codegen 配置（`rust_root: .` / `dart_output: lib/src/rust`） |
+项目同时提供 Rust、Dart/Flutter 和 C ABI 三种接入方式，可用于 Flutter、桌面应用、
+命令行程序、C/C++ 项目及 C#/WinUI 3 应用。
 
-## 跑测试（无需 Flutter 工具链）
+## 设计目标
 
-```bash
-cd livecore
-cargo test                       # 全量（990 用例）
-cargo test -p slive-core         # 仅纯核心
-cargo test -p slive-cli          # 仅 CLI（URL 解析）
-cargo clippy --all-targets       # 静态检查
+- **单一协议实现**：平台协议只存在于 Rust，不在 Dart 侧维护并行实现。
+- **清晰分层**：核心协议、设备连接、语言绑定和宿主适配相互独立。
+- **多语言复用**：同一套核心能力通过 Rust、Dart/FRB 与 C ABI 对外提供。
+- **可验证行为**：集成测试、离线夹具、头文件契约和 codegen 漂移检查均纳入 CI。
+- **匿名优先**：优先支持匿名访问；平台强制要求登录或凭据时，返回明确错误。
+
+## 架构
+
+```text
+                 ┌─────────────────────┐
+                 │      slive-core     │
+                 │  platform protocols │
+                 └──────────┬──────────┘
+                            │
+                 ┌──────────▼──────────┐
+                 │      slive-host     │
+                 │ HTTP/WS/TCP sessions│
+                 └───────┬───────┬─────┘
+                         │       │
+             ┌───────────▼─┐ ┌───▼──────────┐
+             │ slive-cli   │ │  slive-ffi   │
+             └─────────────┘ └──────────────┘
+                         │
+             ┌───────────▼──────────────┐
+             │ FRB bridge / Dart package│
+             └──────────────────────────┘
 ```
 
-## 命令行
+## 仓库结构
+
+| 路径 | 说明 |
+|------|------|
+| `crates/slive-core/` | 纯 Rust 核心，包含平台协议、数据模型、HTTP/TARS/WebSocket 辅助能力，不依赖 FRB。 |
+| `crates/slive-host/` | 宿主层，负责真实连接、弹幕会话装配和运行时生命周期。 |
+| `crates/slive-ffi/` | 稳定 C ABI，提供动态库、静态库、C/C++ 头文件和 C# P/Invoke 包装器。 |
+| `crates/slive-cli/` | `slive` 命令行工具，直接调用 Rust 核心。 |
+| `src/` | FRB 桥接层与生成到 Rust 的绑定代码。 |
+| `lib/src/rust/` | FRB 生成的 Dart 绑定。 |
+| `lib/src/bridge/` | FRB 模型到 Dart 公共模型的类型翻译层，不包含协议逻辑。 |
+| `lib/src/{model,interface}/` | Flutter 应用使用的跨平台模型与 `LiveSite`/`LiveDanmaku` 接口。 |
+| `rust_builder/` | Flutter 插件构建入口，包名为 `rust_lib_livecore`。 |
+| `flutter_rust_bridge.yaml` | FRB codegen 配置。 |
+| `.github/workflows/` | Rust CI、C ABI 跨平台构建与版本发布流程。 |
+| `scripts/` | 本地完整验证脚本。 |
+
+## 公开接口
+
+| 宿主 | 入口 |
+|------|------|
+| Rust | `slive_core::platforms::{create_site, Platform}`、`slive_host` |
+| Flutter / Dart | `package:livecore/livecore.dart`，初始化入口为 `RustLib.init()` |
+| C | `crates/slive-ffi/include/slive.h` |
+| C++ / Qt / MyGUI | `crates/slive-ffi/include/slive.hpp` |
+| C# / WinUI 3 | `crates/slive-ffi/csharp/Slive.cs` |
+
+## 平台能力
+
+B 站、斗鱼、虎牙、抖音和 Twitch 已覆盖浏览/推荐、搜索、房间详情、播放取流与弹幕。
+扩展到内容与社交平台时，功能完整度会受平台匿名策略、验证码、登录状态或动态接口影响。
+
+### 扩展平台能力矩阵
+
+| 平台 | 浏览/推荐 | 搜索 | 播放 | 弹幕 |
+|------|-----------|------|------|------|
+| 快手 | ✅ | ✅ | ✅ | ⛔ `websocketinfo` 匿名返回验证码 `result=400002` |
+| AcFun | ✅ | ✅ | ✅ | ✅ 实机收到弹幕 |
+| 微博 | ✅ | 匿名无结果 | ✅ | ⛔ `wesync` 返回 `21301`（需登录） |
+| 小红书 | 仅分享页直达 | — | ✅ | ⛔ 分享页无 IM 凭据（需访客会话/App 协议） |
+| YouTube | ✅ | ✅ | ⛔ Core 匿名取流被拒（HTTP 400，需登录/PO token） | ✅ 实机收到弹幕与 SC |
+
+状态说明：
+
+- `✅`：已实现，并通过离线契约测试或实机验证。
+- `⛔`：当前平台策略阻止匿名访问，或缺少接入所需的会话/凭据。
+- `—`：当前不提供该能力。
+
+针对扩展平台的处理原则如下：
+
+- 快手区域列表仍以固定分类和首页推荐为主；弹幕接口要求通过平台验证码。
+- AcFun 使用 visitor 会话与 `startPlay` 票据建立弹幕连接。
+- 微博搜索结果基于官方推荐快照，不等同于全站搜索；弹幕需要登录 Cookie。
+- 小红书支持分享页详情与受限判定，目录和关键词搜索需要浏览器访客会话。
+- YouTube 列表、搜索、详情和弹幕可用；匿名 `player` 请求可能要求登录或 PO token。
+
+## 环境要求
+
+- Rust stable 工具链。
+- Dart/Flutter：仅在生成或使用 FRB 绑定时需要。
+- Linux 编译 C ABI：OpenSSL 开发文件、`pkg-config` 及兼容的 OpenSSL 运行库。
+- Windows 编译 C ABI：Visual Studio Build Tools 与 MSVC x64 工具链。
+
+## Rust 构建与测试
+
+在仓库根目录执行：
 
 ```bash
-cd livecore
+cargo build --locked -p slive-cli --release
+cargo test --workspace
+cargo clippy -p slive-core -p slive-host -p slive-ffi --all-targets -- -D warnings
+```
+
+仅验证核心库：
+
+```bash
+cargo test -p slive-core
+```
+
+完整本地验证：
+
+```powershell
+.\scripts\test-all.ps1
+```
+
+该脚本覆盖 workspace 测试、核心 crate clippy、FRB 生成物漂移和 C 头文件常量一致性。
+
+## 命令行工具
+
+构建 `slive`：
+
+```bash
 cargo build -p slive-cli --release
-./target/release/slive info    https://live.bilibili.com/7734200
+```
+
+常用命令：
+
+```bash
+./target/release/slive info https://live.bilibili.com/7734200
 ./target/release/slive danmaku https://live.bilibili.com/6
-./target/release/slive rooms   douyin --limit 20
-./target/release/slive rooms   kuaishou --limit 20
-./target/release/slive info    https://live.acfun.cn/live/173620
-./target/release/slive info    https://live.douyin.com/80126552431 --cookie-file /path/to/douyin.cookie
+./target/release/slive rooms douyin --limit 20
+./target/release/slive rooms kuaishou --limit 20
+./target/release/slive info https://live.acfun.cn/live/173620
+./target/release/slive info https://live.douyin.com/80126552431 --cookie-file /path/to/douyin.cookie
 ./target/release/slive help
 ```
 
-`info` 输出房间详情、全部清晰度与直链（含请求头）；`danmaku` 持续打印弹幕，Ctrl-C 退出；
-`rooms` 输出推荐房间。`--cookie-file` 目前用于抖音，文件内容只作为 Cookie 请求头注入，
-不会写入日志。也可通过环境变量 `SLIVE_COOKIE_FILE` 传入路径，避免 Cookie 出现在进程参数中。
+- `info`：输出房间详情、清晰度和播放直链。
+- `danmaku`：持续输出弹幕，按 `Ctrl-C` 退出。
+- `rooms`：输出推荐或分类房间。
+- `--cookie-file`：从文件读取 Cookie；也可通过 `SLIVE_COOKIE_FILE` 传入路径，避免凭据出现在进程参数中。
 
-## 平台状态（2026-11）
+## Flutter / Dart 接入
 
-- **B站 / 斗鱼 / 虎牙 / 抖音 / Twitch**：详情、取流、弹幕完整；Twitch 的分类 / 推荐 / 搜索见下节。
-- **快手**：8 个固定分类、首页推荐、搜索、房间详情、画质与取流已接入（房间页 `__INITIAL_STATE__`，匿名会话兜底）；区域列表（gameboard / non-gameboard）待接入。
-- **ACFUN**：房间详情、visitor 会话（5 分钟缓存）、`startPlay` 画质与取流已接入；分类 / 推荐 / 搜索待接入。
-- **微博**：推荐快照、昵称 / 场次搜索、单场详情、直播 FLV 与回放 HLS 已接入（搜索只筛官方推荐快照，非全站）。
-- **小红书**：分享页详情、受限判定、多 CDN 取流已接入；目录 / 关键词搜索需要浏览器访客会话（本 core 不提供）。
-- **YouTube**：列表 / 搜索 / 详情已接入；匿名取流被平台要求登录或 PO token，质量接口会如实报错。
-- **弹幕**：仍只覆盖 B站 / 斗鱼 / 虎牙 / 抖音 / Twitch。
+Flutter 应用通过 Git 依赖获取 Dart 包和 Rust 构建插件：
 
-真机验证（mpv 解码）：Twitch 1080p60 H.264、ACFUN 1080p59 4Mbps、快手 1080p30 8Mbps、微博 720×1280 H.264、小红书 1440×2560 60fps，均为 H.264 + AAC。
+```yaml
+dependencies:
+  livecore:
+    git:
+      url: https://github.com/gaoxing64/livecore.git
+      ref: future
+  rust_lib_livecore:
+    git:
+      url: https://github.com/gaoxing64/livecore.git
+      path: rust_builder
+      ref: future
+```
 
-## Twitch 列表能力
+应用应提交 `pubspec.lock`，以锁定实际解析到的 LiveCore commit。
 
-Twitch 的分类、首页推荐与搜索按 PureLive `live_core` 的 Twitch 实现重写（`crates/slive-core/src/platforms/twitch/{catalog,rooms,search}.rs`）；详情、取流、弹幕仍沿用旧 Dart core 的迁移结果。
+Dart 侧统一导入：
 
-- `get_categories`：`SearchCategoryTags` + `BrowsePage_AllDirectories`，中文名称（缺中文名时再发一次英文请求补），目录 slug 作为 `LiveSubCategory.id` 供 `get_category_rooms` 使用；
-- `get_recommend_rooms` / `get_category_rooms`：全站 `streams` raw query / `DirectoryPage_Game`，按 cursor 抓块后存成句柄级快照，再按 `page` 切片；
-- `search_rooms` / `search_anchors`：`SearchResultsPage_SearchResults`，沿 CHANNEL cursor 翻页；前者只给在播频道，后者含未开播（`live_status` 标记）。
+```dart
+import 'package:livecore/livecore.dart';
+```
 
-列表请求用 `Accept-Language: zh-CN`，详情 / 取流链路保持 en-US；匿名客户端在后续页被要求 integrity token 时列表安静收尾。离线契约见 `crates/slive-core/tests/ac_twitch_lists.rs`。
+FRB 桥接层只负责模型翻译、句柄管理和调用转发，平台协议不得进入 Dart 层。
 
-## 重跑 codegen
+## FRB 代码生成
 
-改了 `src/api/**` 后，在 `livecore/` 下按 `flutter_rust_bridge.yaml` 生成
-（`rust_input: crate::api` 自动扫描）；生成物入库。**两侧版本必须都是 2.13.0**。
+修改 `src/api/**` 后，在仓库根目录执行：
 
-## 构建入口
+```bash
+flutter_rust_bridge_codegen generate
+```
 
-主 App `simple_live_app/` 与 TV app `simple_live_tv_app/` 从
-`https://github.com/gaoxing64/livecore` 获取 Dart 包和 `rust_builder` 插件，共用同一 crate
-与同一份生成物；`pubspec.lock` 锁定实际 commit。Dart 侧统一 `import 'package:livecore/livecore.dart'`（绑定层经库出口暴露，
-`RustLib.init()` 见 `frb_generated.dart` 出口）。
+要求：
 
-设计文档（`docs/rust-core/`、`docs/decisions/` 与 `doc/` 知识库）已归档至备份分支
-`backup/future-20261101-234115`。绑定层边界结论：桥层只做类型翻译与转发、零协议逻辑。
+- `pubspec.yaml` 与 `Cargo.toml` 中的 Flutter Rust Bridge 版本必须一致。
+- 当前版本为 `2.13.0`。
+- 生成物 `src/frb_generated.rs` 与 `lib/src/rust/` 必须提交。
 
-## 非 Dart 宿主（C# / C++ / Rust）
+## C ABI
 
-核心与传输已从 Dart 完全解耦：
+### 本机构建
 
-| 目标 | 入口 |
-|---|---|
-| 纯 Rust | `slive_core::platforms::create_site(Platform::Bilibili)` + `slive_host::danmaku::spawn(...)` |
-| C++ / Qt / MyGUI | `include/slive.hpp`（RAII 封装，`Runtime` / `Site` / `Danmaku` / `Mask`） |
-| C# / WinUI 3 | `csharp/Slive.cs`（P/Invoke + `TaskCompletionSource`） |
-| 裸 C | `include/slive.h` |
+```bash
+cargo build --locked --release -p slive-ffi
+```
 
-### GitHub Actions 构建与下载 C ABI
+指定 Rust target：
 
-`LiveCore C ABI` workflow 会为 Linux x64/ARM64、macOS x64/ARM64 和 Windows x64 编译动态库、
-静态库、C/C++ 头文件与 C# P/Invoke 包装器。推送 `v*` tag 后，workflow 会将各目标包附加到
-GitHub Release；手动运行或从其他仓库调用时，构建包会作为 Actions artifact 提供。
+```bash
+cargo build --locked --release -p slive-ffi --target <rust-target>
+```
 
-其他仓库可以调用公开的 reusable workflow：
+Windows 可使用构建脚本：
+
+```powershell
+.\crates\slive-ffi\build.ps1 -Release
+.\crates\slive-ffi\build.ps1 -Release -StaticCrt
+```
+
+未指定 target 时产物位于 `target/release/`，指定后位于
+`target/<rust-target>/release/`。
+
+### GitHub Actions 构建与发布
+
+`LiveCore C ABI` workflow 覆盖：
+
+- Linux x86_64
+- Linux aarch64
+- macOS x86_64
+- macOS aarch64
+- Windows x86_64
+
+每次构建上传 Actions artifacts；推送 `v*` 标签时，构建包会附加到 GitHub Release。
+发布包包含动态库、静态库、C/C++ 头文件、C# 包装器和 SHA256 校验文件。
+
+其他仓库可以调用可复用 workflow：
 
 ```yaml
 jobs:
@@ -112,59 +240,48 @@ jobs:
       source_ref: future
 ```
 
-`source_ref` 可指定 LiveCore 的分支、tag 或 commit。调用方 workflow 的运行页面会显示并保存
-各目标 artifact。
+`source_ref` 可指定 LiveCore 的分支、标签或 commit。
 
-### 本机编译 C ABI
-
-在 LiveCore 仓库根目录运行以下命令，可按本机 Rust target 编译：
-
-```bash
-cargo build --locked --release -p slive-ffi
-```
-
-Windows 可用脚本编译 MSVC x64：
-
-```powershell
-.\crates\slive-ffi\build.ps1 -Release          # 产出 slive_ffi.dll + slive_ffi.lib
-.\crates\slive-ffi\build.ps1 -Release -StaticCrt  # 静态 CRT（宿主必须同口径）
-```
-
-指定 Rust target 时可直接运行：
-
-```bash
-cargo build --locked --release -p slive-ffi --target <rust-target>
-```
-
-产物位于 `target/<rust-target>/release/`；不指定 target 时位于 `target/release/`。
-Linux 本机编译需要 OpenSSL 开发文件和 `pkg-config`，运行动态库的系统也需要兼容的 OpenSSL
-运行库。C/C++ 头文件已入库，无需 cbindgen。
-
-### 调用模型
+### 调用约定
 
 ```c
-SliveConfig cfg = { .struct_size = sizeof cfg, .abi_version = SLIVE_ABI_VERSION,
-                    .on_complete = my_completion, .on_event = my_event, .on_log = my_log,
-                    .user_data = ctx };
+SliveConfig cfg = {
+    .struct_size = sizeof cfg,
+    .abi_version = SLIVE_ABI_VERSION,
+    .on_complete = my_completion,
+    .on_event = my_event,
+    .on_log = my_log,
+    .user_data = ctx,
+};
 slive_init(&cfg);
 
 SliveHandle site;
 slive_site_create(SLIVE_PLATFORM_BILIBILI, &site);
-slive_site_call(site, SLIVE_STR(SLIVE_METHOD_GET_ROOM_DETAIL),
-                SLIVE_STR("{\"room_id\":\"6\"}"), slive_request_id_new());
-/* my_completion 在专用线程串行收到 envelope JSON */
+slive_site_call(
+    site,
+    SLIVE_STR(SLIVE_METHOD_GET_ROOM_DETAIL),
+    SLIVE_STR("{\"room_id\":\"6\"}"),
+    slive_request_id_new()
+);
 ```
 
-**线程约定**：所有回调在库内**单个专用线程**上串行触发。WinUI3 需 `DispatcherQueue.TryEnqueue`，
-Qt 需 `QMetaObject::invokeMethod(..., Qt::QueuedConnection)` 切回 UI 线程。
+- 回调在库内单一专用线程上串行触发。
+- WinUI 3 应通过 `DispatcherQueue.TryEnqueue` 切回 UI 线程。
+- Qt 应使用 `QMetaObject::invokeMethod(..., Qt::QueuedConnection)` 切回 UI 线程。
+- `0` 表示请求已受理；`1` 表示业务错误；负数表示 ABI 级错误。
 
-**返回码**：`0` = 已受理（异步方法保证恰好一次 completion）；`1` = 业务错误（解析 envelope）；
-负数 = ABI 错误（`-1` 无效句柄 / `-3` 非 UTF-8 / `-6` panic / `-9` 不支持 等，见 `slive.h`）。
+完整返回码和结构体定义见 `crates/slive-ffi/include/slive.h`。
 
-## 验证
+## 持续集成
 
-```powershell
-.\scripts\test-all.ps1
-```
+| 工作流 | 触发条件 | 内容 |
+|--------|----------|------|
+| `ci.yml` | push、pull request | workspace 测试、clippy、头文件契约、codegen 漂移检查 |
+| `build-c-abi.yml` | push、pull request、手动触发、外部调用、版本标签 | 五目标 C ABI 构建、artifact 上传、Release 发布 |
 
-覆盖：workspace 测试、新 crate clippy `-D warnings`、FRB 生成物漂移检查、C 头文件常量一致性。
+## 贡献
+
+提交前应完成相关测试与静态检查。涉及平台接口时，应优先补充离线夹具或契约测试，
+并明确记录匿名访问、登录要求、验证码和动态票据等平台限制。
+
+仓库地址：[github.com/gaoxing64/livecore](https://github.com/gaoxing64/livecore)

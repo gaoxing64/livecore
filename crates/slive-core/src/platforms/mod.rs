@@ -6,6 +6,7 @@
 //! `pub mod twitch;` 被覆盖丢失导致全量编译失败）。需要新增平台模块时，
 //! 在回传清单里告知总监，由总监统一接线。
 
+mod credential;
 mod macros;
 
 pub mod acfun;
@@ -19,5 +20,6 @@ pub mod twitch;
 pub mod weibo;
 pub mod xiaohongshu;
 pub mod youtube;
+pub mod ztlive;
 
 pub use live_site::{all_platforms, create_site, LiveSite, Platform};

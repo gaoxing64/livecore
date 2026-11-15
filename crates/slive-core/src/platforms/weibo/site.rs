@@ -20,6 +20,8 @@ use super::play;
 pub struct Site {
     http: Arc<dyn HttpTransport>,
     time: Arc<dyn TimeSource>,
+    /// 用户注入的 Cookie（可选，匿名也能用推荐与详情）。
+    cookie: std::sync::Mutex<String>,
 }
 
 impl Default for Site {
@@ -34,7 +36,11 @@ impl Site {
     }
 
     pub fn with_deps(http: Arc<dyn HttpTransport>, time: Arc<dyn TimeSource>) -> Self {
-        Self { http, time }
+        Self {
+            http,
+            time,
+            cookie: std::sync::Mutex::new(String::new()),
+        }
     }
 
     pub fn http(&self) -> Arc<dyn HttpTransport> {
@@ -47,10 +53,19 @@ impl Site {
 
     /// GET 一个微博 JSON 接口（带 3.x 的 referer / UA）。
     async fn get_json(&self, url: &str) -> Result<Value, SliveError> {
+        let mut headers = api::headers();
+        let cookie = self
+            .cookie
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone();
+        if !cookie.is_empty() {
+            headers.push(("cookie".to_string(), cookie));
+        }
         let request = HttpRequest {
             url: url.to_string(),
             query: Vec::new(),
-            headers: api::headers(),
+            headers,
         };
         let reply = self.http.get(&request).await?;
         reply.json()
@@ -66,9 +81,7 @@ impl Site {
     async fn broadcast(&self, live_id: &str) -> Result<WeiboBroadcast, SliveError> {
         let id = live_id.trim();
         if !api::is_live_id(id) {
-            return Err(SliveError::NotFound(format!(
-                "不是微博场次 id：{id}"
-            )));
+            return Err(SliveError::NotFound(format!("不是微博场次 id：{id}")));
         }
         let json = self.get_json(&api::detail_url(id)).await?;
         detail::parse_detail(&json, id)
@@ -101,8 +114,12 @@ impl crate::platforms::live_site::LiveSite for Site {
         api::SITE_NAME.to_string()
     }
 
-    fn set_site_attrs(&self, _data: &str) -> Result<(), SliveError> {
-        Err(SliveError::invalid_input("微博不支持注入凭证"))
+    fn set_site_attrs(&self, data: &str) -> Result<(), SliveError> {
+        let Some(cookie) = crate::platforms::credential::parse_cookie(data)? else {
+            return Ok(());
+        };
+        *self.cookie.lock().unwrap_or_else(|e| e.into_inner()) = cookie;
+        Ok(())
     }
 
     async fn get_categories(&self) -> Result<Vec<LiveCategory>, SliveError> {
@@ -148,7 +165,11 @@ impl crate::platforms::live_site::LiveSite for Site {
         })
     }
 
-    async fn search_rooms(&self, keyword: String, page: i32) -> Result<LiveSearchRoomResult, SliveError> {
+    async fn search_rooms(
+        &self,
+        keyword: String,
+        page: i32,
+    ) -> Result<LiveSearchRoomResult, SliveError> {
         if page > 1 || keyword.trim().is_empty() {
             return Ok(LiveSearchRoomResult {
                 has_more: false,

@@ -1,4 +1,4 @@
-//! 五平台弹幕会话装配：入参解析 → URL/头 → 连接工厂 → 会话主循环。
+//! 平台弹幕会话装配：入参解析 → URL/头 → 连接工厂 → 会话主循环。
 //!
 //! 这里只做「接线」，零解析逻辑（帧编解码 / 心跳 / 重连全在 `slive-core`）。
 //! 原先在 `crates/slive-cli/src/danmaku.rs` 与 `src/api/slive/*.rs` 各写一遍，此处收敛为一份。
@@ -31,9 +31,17 @@ pub fn spawn(
         Platform::Huya => spawn_huya(args, stop, on_item),
         Platform::Douyin => spawn_douyin(args, stop, on_item),
         Platform::Twitch => spawn_twitch(args, stop, on_item),
-        Platform::Kuaishou | Platform::Acfun | Platform::Weibo | Platform::Xiaohongshu | Platform::YouTube => {
-            Err(SliveError::invalid_input("该平台弹幕暂未实现"))
-        }
+        Platform::Acfun => spawn_acfun(args, stop, on_item),
+        Platform::YouTube => spawn_youtube(args, stop, on_item),
+        Platform::Kuaishou => Err(SliveError::invalid_input(
+            "快手弹幕票据接口需要人机验证，匿名会话不可用",
+        )),
+        Platform::Weibo => Err(SliveError::invalid_input(
+            "微博弹幕需要登录 Cookie，当前客户端未接入微博登录",
+        )),
+        Platform::Xiaohongshu => Err(SliveError::invalid_input(
+            "小红书弹幕需要浏览器访客会话，当前客户端未接入",
+        )),
     }
 }
 
@@ -220,6 +228,61 @@ fn spawn_twitch(
             on_item,
         )
         .await;
+    });
+    Ok(())
+}
+
+fn spawn_acfun(
+    author_id: &str,
+    stop: watch::Receiver<bool>,
+    mut on_item: impl FnMut(LiveDanmuItem) + Send + 'static,
+) -> Result<(), SliveError> {
+    use slive_core::platforms::acfun::AcfunSite;
+    use slive_core::platforms::ztlive::session::{run_session, WS_URL};
+
+    let author_id = author_id.trim().to_string();
+    if author_id.is_empty() {
+        return Err(SliveError::invalid_input("AcFun 弹幕缺少主播 id"));
+    }
+    let headers = vec![
+        (
+            "user-agent".to_string(),
+            slive_core::http::DEFAULT_USER_AGENT.to_string(),
+        ),
+        ("origin".to_string(), "https://live.acfun.cn".to_string()),
+    ];
+    runtime::spawn_session("slive-acfun-danmaku", async move {
+        // 票据在会话启动时取一次；ztlive 内部重连沿用同一批票据，
+        // 票据失效会以「请重新进入直播间」结束（不静默重试）。
+        let site = AcfunSite::new();
+        let args = match site.danmaku_args(&author_id).await {
+            Ok(args) => args,
+            Err(error) => {
+                on_item(slive_core::models::LiveDanmuItem::Control(
+                    slive_core::models::LiveDanmuControlEvent::Closed(error.to_string()),
+                ));
+                return;
+            }
+        };
+        let connect = ws::binary_factory(WS_URL.to_string(), headers);
+        run_session(args, connect, SessionTuning::bilibili(), stop, on_item).await;
+    });
+    Ok(())
+}
+
+fn spawn_youtube(
+    video_or_args: &str,
+    stop: watch::Receiver<bool>,
+    on_item: impl FnMut(LiveDanmuItem) + Send + 'static,
+) -> Result<(), SliveError> {
+    use slive_core::http::ReqwestTransport;
+    use slive_core::platforms::youtube::danmaku::session::run_session;
+    use slive_core::platforms::youtube::danmaku::YouTubeDanmakuArgs;
+
+    let args = YouTubeDanmakuArgs::parse(video_or_args)?;
+    let http: Arc<dyn slive_core::http::HttpTransport> = Arc::new(ReqwestTransport::new());
+    runtime::spawn_session("slive-youtube-danmaku", async move {
+        run_session(args, http, SessionTuning::bilibili(), stop, on_item).await;
     });
     Ok(())
 }

@@ -32,6 +32,8 @@ pub struct Site {
     http: Arc<dyn HttpTransport>,
     time: Arc<dyn TimeSource>,
     state: Mutex<SiteState>,
+    /// 用户注入的 Cookie（YouTube 匿名取流被风控，登录态可解锁）。
+    cookie: Mutex<String>,
 }
 
 impl Default for Site {
@@ -50,6 +52,7 @@ impl Site {
             http,
             time,
             state: Mutex::new(SiteState::default()),
+            cookie: Mutex::new(String::new()),
         }
     }
 
@@ -65,6 +68,36 @@ impl Site {
         self.state.lock().unwrap_or_else(|e| e.into_inner())
     }
 
+    fn cookie(&self) -> String {
+        self.cookie
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
+    }
+
+    /// 把用户 Cookie 合并进请求头。
+    ///
+    /// `api::page_headers` / `api::api_headers` 自带 `cookie: SOCS=CAI`，
+    /// 直接再 push 一条会产生两个 Cookie 头，合并顺序由服务端决定；
+    /// 这里并入同一条，保留 consent 值。
+    fn headers_with_cookie(&self, mut headers: Vec<(String, String)>) -> Vec<(String, String)> {
+        let cookie = self.cookie();
+        if cookie.is_empty() {
+            return headers;
+        }
+        match headers
+            .iter_mut()
+            .find(|(name, _)| name.eq_ignore_ascii_case("cookie"))
+        {
+            Some((_, value)) => {
+                value.push_str("; ");
+                value.push_str(&cookie);
+            }
+            None => headers.push(("cookie".to_string(), cookie)),
+        }
+        headers
+    }
+
     /// POST 一条 InnerTube JSON 请求（Web 上下文，不带 key）。
     async fn post_api(&self, endpoint: &str, body: Value) -> Result<Value, SliveError> {
         let payload = serde_json::to_string(&body)
@@ -72,7 +105,7 @@ impl Site {
         let request = HttpRequest {
             url: api::api_url(endpoint),
             query: Vec::new(),
-            headers: api::api_headers(),
+            headers: self.headers_with_cookie(api::api_headers()),
         };
         let reply = self.http.post_json_with(&request, &payload).await?;
         serde_json::from_str(&reply)
@@ -226,8 +259,12 @@ impl crate::platforms::live_site::LiveSite for Site {
         "YouTube Live".to_string()
     }
 
-    fn set_site_attrs(&self, _data: &str) -> Result<(), SliveError> {
-        Err(SliveError::invalid_input("YouTube 不支持注入凭证"))
+    fn set_site_attrs(&self, data: &str) -> Result<(), SliveError> {
+        let Some(cookie) = crate::platforms::credential::parse_cookie(data)? else {
+            return Ok(());
+        };
+        *self.cookie.lock().unwrap_or_else(|e| e.into_inner()) = cookie;
+        Ok(())
     }
 
     async fn get_categories(&self) -> Result<Vec<LiveCategory>, SliveError> {
@@ -264,7 +301,11 @@ impl crate::platforms::live_site::LiveSite for Site {
         })
     }
 
-    async fn search_rooms(&self, keyword: String, page: i32) -> Result<LiveSearchRoomResult, SliveError> {
+    async fn search_rooms(
+        &self,
+        keyword: String,
+        page: i32,
+    ) -> Result<LiveSearchRoomResult, SliveError> {
         let listing = self.search_page(&keyword, page).await?;
         Ok(LiveSearchRoomResult {
             has_more: listing.next.is_some(),
@@ -299,17 +340,13 @@ impl crate::platforms::live_site::LiveSite for Site {
             if let Some(card) = self.video_live_card(id).await? {
                 return Ok(Self::card_to_detail(card));
             }
-            return Err(SliveError::NotFound(format!(
-                "视频 {id} 当前没有在播直播"
-            )));
+            return Err(SliveError::NotFound(format!("视频 {id} 当前没有在播直播")));
         }
         if api::is_channel_id(id) || id.starts_with('@') {
             if let Some(card) = self.channel_live_card(id).await? {
                 return Ok(Self::card_to_detail(card));
             }
-            return Err(SliveError::NotFound(format!(
-                "频道 {id} 当前没有直播"
-            )));
+            return Err(SliveError::NotFound(format!("频道 {id} 当前没有直播")));
         }
         Err(SliveError::NotFound(format!(
             "不是 YouTube 频道或直播 id：{id}"
@@ -336,17 +373,18 @@ impl crate::platforms::live_site::LiveSite for Site {
             .http
             .get_with_headers(
                 &format!("https://www.youtube.com/watch?v={video_id}"),
-                &api::page_headers(&video_id),
+                &self.headers_with_cookie(api::page_headers(&video_id)),
             )
             .await?;
-        let api_key = api::api_key_of(&watch_html).unwrap_or_else(|| api::FALLBACK_API_KEY.to_string());
+        let api_key =
+            api::api_key_of(&watch_html).unwrap_or_else(|| api::FALLBACK_API_KEY.to_string());
 
         let payload = serde_json::to_string(&api::player_body(&video_id))
             .map_err(|e| SliveError::decode(format!("序列化 player 请求失败：{e}")))?;
         let request = HttpRequest {
             url: api::player_url(&api_key),
             query: Vec::new(),
-            headers: api::api_headers(),
+            headers: self.headers_with_cookie(api::api_headers()),
         };
         let body = match self.http.post_json_with(&request, &payload).await {
             Ok(body) => body,
@@ -384,7 +422,11 @@ impl crate::platforms::live_site::LiveSite for Site {
                 code: -1,
                 message: format!(
                     "YouTube 拒绝匿名取流（{}{}{}）{snippet}",
-                    if status.is_empty() { "无 playabilityStatus" } else { status },
+                    if status.is_empty() {
+                        "无 playabilityStatus"
+                    } else {
+                        status
+                    },
                     if reason.is_empty() { "" } else { ": " },
                     reason
                 ),

@@ -9,6 +9,8 @@ pub struct AcfunVisitor {
     pub user_id: String,
     pub device_id: String,
     pub token: String,
+    /// `acSecurity`（base64）：link IM 注册帧的 AES 密钥。
+    pub security: String,
     pub expires_at: u64, // Unix timestamp
 }
 
@@ -52,11 +54,21 @@ impl AcfunVisitor {
         
         // 5 分钟有效期
         let expires_at = now_secs + 300;
+
+        // 匿名会话的 `acSecurity` 是 link IM 的 AES 密钥；缺它就无法起弹幕，
+        // 但播放链路不依赖它，故这里只要求字段存在。
+        let security = json
+            .get("acSecurity")
+            .or_else(|| json.get("ssecurity"))
+            .and_then(|v| v.as_str())
+            .unwrap_or_default()
+            .to_string();
         
         Ok(Self {
             user_id,
             device_id: device_id.to_string(),
             token,
+            security,
             expires_at,
         })
     }

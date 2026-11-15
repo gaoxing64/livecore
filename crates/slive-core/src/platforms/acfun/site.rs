@@ -32,10 +32,7 @@ impl Default for AcfunSite {
 
 impl AcfunSite {
     pub fn new() -> Self {
-        Self::with_deps(
-            Arc::new(ReqwestTransport::new()),
-            Arc::new(SystemClock),
-        )
+        Self::with_deps(Arc::new(ReqwestTransport::new()), Arc::new(SystemClock))
     }
 
     pub fn with_deps(http: Arc<dyn HttpTransport>, time: Arc<dyn TimeSource>) -> Self {
@@ -104,10 +101,7 @@ impl AcfunSite {
                 &url,
                 &body,
                 &[
-                    (
-                        "user-agent",
-                        crate::http::DEFAULT_USER_AGENT.to_string(),
-                    ),
+                    ("user-agent", crate::http::DEFAULT_USER_AGENT.to_string()),
                     ("referer", "https://www.acfun.cn/".to_string()),
                 ],
             )
@@ -139,8 +133,86 @@ impl AcfunSite {
         Ok(json)
     }
 
+    /// 组装 link IM 弹幕会话材料（visitor 登录 + startPlay 票据）。
+    ///
+    /// 与播放链路一样需要 startPlay；弹幕宿主单独调用一次，避免把票据塞进
+    /// 房间详情（票据会随房态刷新，缓存在详情里容易过期）。
+    pub async fn danmaku_args(
+        &self,
+        author_id: &str,
+    ) -> Result<crate::platforms::ztlive::ZtLiveDanmakuArgs, SliveError> {
+        let visitor = self.ensure_visitor().await?;
+        if visitor.security.trim().is_empty() {
+            return Err(SliveError::Api {
+                code: -1,
+                message: "visitor/login 未下发 acSecurity，无法建立弹幕会话".to_string(),
+            });
+        }
+        let json = self.start_play(author_id).await?;
+        let data = json
+            .get("data")
+            .ok_or_else(|| SliveError::decode("startPlay 缺少 data"))?;
+        let live_id = data
+            .get("liveId")
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_string();
+        if live_id.is_empty() {
+            return Err(SliveError::Api {
+                code: -1,
+                message: "startPlay 未下发 liveId".to_string(),
+            });
+        }
+        let enter_room_attach = data
+            .get("enterRoomAttach")
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_string();
+        if enter_room_attach.is_empty() {
+            log::warn!("[acfun] startPlay 未下发 enterRoomAttach，弹幕进房可能失败");
+        }
+        let tickets: Vec<String> = data
+            .get("availableTickets")
+            .and_then(Value::as_array)
+            .map(|tickets| {
+                tickets
+                    .iter()
+                    .filter_map(Value::as_str)
+                    .filter(|ticket| !ticket.is_empty())
+                    .map(str::to_string)
+                    .collect()
+            })
+            .unwrap_or_default();
+        if tickets.is_empty() {
+            return Err(SliveError::Api {
+                code: -1,
+                message: "startPlay 未下发弹幕票据，无法建立弹幕会话".to_string(),
+            });
+        }
+        let uid = visitor
+            .user_id
+            .trim()
+            .parse::<u64>()
+            .map_err(|e| SliveError::decode(format!("visitor userId 非法: {e}")))?;
+        let args = crate::platforms::ztlive::ZtLiveDanmakuArgs {
+            live_id,
+            uid,
+            did: visitor.device_id,
+            service_token: visitor.token,
+            security: visitor.security,
+            tickets,
+            enter_room_attach,
+        };
+        Ok(args)
+    }
+
     /// 调用 channel/list（`count=1` 只为拿区域过滤器）。
-    async fn list_json(&self, count: i32, cursor: &str, filters: Option<&str>) -> Result<Value, SliveError> {
+    async fn list_json(
+        &self,
+        count: i32,
+        cursor: &str,
+        filters: Option<&str>,
+    ) -> Result<Value, SliveError> {
         let url = super::api::channel_list(count, cursor, filters);
         self.http.get_json(&url).await
     }
@@ -226,15 +298,27 @@ impl crate::platforms::live_site::LiveSite for AcfunSite {
         page: i32,
         page_size: Option<i32>,
     ) -> Result<LiveCategoryResult, SliveError> {
-        self.directory(page.max(1), page_size, super::api::area_filter(&category).as_deref())
-            .await
+        self.directory(
+            page.max(1),
+            page_size,
+            super::api::area_filter(&category).as_deref(),
+        )
+        .await
     }
 
-    async fn get_recommend_rooms(&self, page: i32, page_size: Option<i32>) -> Result<LiveCategoryResult, SliveError> {
+    async fn get_recommend_rooms(
+        &self,
+        page: i32,
+        page_size: Option<i32>,
+    ) -> Result<LiveCategoryResult, SliveError> {
         self.directory(page.max(1), page_size, None).await
     }
 
-    async fn search_rooms(&self, keyword: String, page: i32) -> Result<LiveSearchRoomResult, SliveError> {
+    async fn search_rooms(
+        &self,
+        keyword: String,
+        page: i32,
+    ) -> Result<LiveSearchRoomResult, SliveError> {
         let items = self.search_anchors(keyword, page).await?.items;
         Ok(LiveSearchRoomResult {
             has_more: false,
@@ -252,7 +336,11 @@ impl crate::platforms::live_site::LiveSite for AcfunSite {
         })
     }
 
-    async fn search_anchors(&self, keyword: String, page: i32) -> Result<LiveSearchAnchorResult, SliveError> {
+    async fn search_anchors(
+        &self,
+        keyword: String,
+        page: i32,
+    ) -> Result<LiveSearchAnchorResult, SliveError> {
         let keyword = keyword.trim();
         if keyword.is_empty() {
             return Ok(LiveSearchAnchorResult {
@@ -273,16 +361,26 @@ impl crate::platforms::live_site::LiveSite for AcfunSite {
         super::detail::parse_room_info(&json, &room_id)
     }
 
-    async fn get_play_qualities(&self, detail: LiveRoomDetail) -> Result<Vec<LivePlayQuality>, SliveError> {
+    async fn get_play_qualities(
+        &self,
+        detail: LiveRoomDetail,
+    ) -> Result<Vec<LivePlayQuality>, SliveError> {
         if !detail.status {
-            return Err(SliveError::Api { code: -1, message: "房间未开播".to_string() });
+            return Err(SliveError::Api {
+                code: -1,
+                message: "房间未开播".to_string(),
+            });
         }
-        
+
         let json = self.start_play(&detail.room_id).await?;
         super::play::parse_qualities(&json)
     }
 
-    async fn get_play_urls(&self, detail: LiveRoomDetail, quality: LivePlayQuality) -> Result<LivePlayUrl, SliveError> {
+    async fn get_play_urls(
+        &self,
+        detail: LiveRoomDetail,
+        quality: LivePlayQuality,
+    ) -> Result<LivePlayUrl, SliveError> {
         Ok(super::play::get_play_url(&quality, &detail.room_id))
     }
 
@@ -291,7 +389,10 @@ impl crate::platforms::live_site::LiveSite for AcfunSite {
         Ok(detail.status)
     }
 
-    async fn get_super_chat_messages(&self, _room_id: String) -> Result<Vec<LiveSuperChatMessage>, SliveError> {
+    async fn get_super_chat_messages(
+        &self,
+        _room_id: String,
+    ) -> Result<Vec<LiveSuperChatMessage>, SliveError> {
         Ok(Vec::new())
     }
 

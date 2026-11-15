@@ -2,9 +2,10 @@
 //!
 //! 背景：Twitch 全部读接口都走 `https://gql.twitch.tv/gql` 的 **POST JSON**
 //! （`twitch_site.dart:49` `buildPersistedRequest` + `HttpClient.instance.postJson`），
-//! 而共享的 [`crate::http::HttpTransport`] 只暴露 `get`（B站全 GET）。为避免在多平台
-//! 并行期间改动共享 `http.rs`，这里在 Twitch 模块内自建一条**向下依赖**的 POST 通道：
-//! - 生产：[`ReqwestTwitchPost`]（复用 `crate::http::build_client` 的共享 rustls Client 口径）
+//! 而共享的 [`crate::http::HttpTransport`] 只暴露 `get`（B站全 GET）。这里在 Twitch
+//! 模块内自建一条**向下依赖**的 POST 通道：
+//! - 生产：[`ReqwestTwitchPost`]（复用 `crate::http` 的 rustls 口径，但**关闭空闲
+//!   连接复用** —— Twitch 边缘会断开 rustls 的 keep-alive 连接，见构造处注释）
 //! - 测试：[`MockTwitchPost`]（按 URL + 请求体标记返回夹具 + 记录请求，供离线用例断言）
 //!
 //! 纪律：**不自动重试**；业务错误由上层判定并抛错。
@@ -14,7 +15,7 @@ use std::sync::{Arc, Mutex};
 use async_trait::async_trait;
 
 use crate::error::SliveError;
-use crate::http::{build_client, HttpReply};
+use crate::http::{build_client_no_pooling, HttpReply};
 
 /// 错误体截断上限（防止把整页 HTML 塞进错误消息）。
 const ERROR_BODY_CAP: usize = 512;
@@ -44,9 +45,12 @@ pub struct ReqwestTwitchPost {
 
 impl ReqwestTwitchPost {
     /// 生产构造。
+    ///
+    /// 该通道**不复用空闲连接**：Twitch 边缘会断开 rustls 客户端的 keep-alive
+    /// 连接（第二个批量 GQL 常吃到 EOF），每请求新握手是实测可用的绕法。
     pub fn new() -> Self {
         Self {
-            client: build_client(),
+            client: build_client_no_pooling(),
         }
     }
 }

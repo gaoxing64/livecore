@@ -12,6 +12,7 @@
 .pub-cache/
 .pub/
 /build/
+/.workbuddy/
 
 # Rust（Rust workspace 根自 2026-10-17 迁入本目录）
 /target

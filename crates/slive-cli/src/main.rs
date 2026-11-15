@@ -29,6 +29,11 @@ slive —— Slive 命令行工具
   虎牙    https://www.huya.com/<房间号>
   抖音    https://live.douyin.com/<web_rid>
   Twitch  https://www.twitch.tv/<频道名>
+  快手    https://live.kuaishou.com/u/<主播id>（弹幕需人机验证，CLI 不可用）
+  AcFun   https://live.acfun.cn/live/<authorId>
+  微博    https://weibo.com/l/wblive/p/show/<场次id>（弹幕需登录）
+  小红书  https://www.xiaohongshu.com/livestream/<房间号>（仅分享页）
+  YouTube https://www.youtube.com/watch?v=<视频id>
 
 选项:
   -q, --quality <名称>  仅取指定清晰度的直链（名称可为片段，如 原画）
@@ -36,7 +41,7 @@ slive —— Slive 命令行工具
       --top <n>         只显示优选顺序的前 n 条线路
       --url-only        只输出直链本身（每行一条，按优选顺序），便于管道
       --probe           起播前并发探测各线路首字节时延，按实测结果排序
-      --cookie-file <路径> 读取 Cookie 文件（目前用于抖音；建议只授予当前用户读取权限）
+      --cookie-file <路径> 读取 Cookie 文件（抖音/快手/微博/YouTube；建议只授予当前用户读取权限）
       --no-color        弹幕不输出 ANSI 颜色
       --emoticons       弹幕后附带解析到的表情（调试用）
 
@@ -203,8 +208,17 @@ async fn dispatch(argv: &[String]) -> Result<(), String> {
             if !detail.status {
                 return Err("房间未开播，无法获取弹幕".to_string());
             }
+            let cookie = match cookie_file {
+                Some(path) => Some(
+                    std::fs::read_to_string(path)
+                        .map_err(|e| format!("读取 Cookie 文件失败「{path}」：{e}"))?
+                        .trim()
+                        .to_string(),
+                ),
+                None => None,
+            };
             println!("\n【开始获取弹幕】（Ctrl-C 退出）");
-            danmaku::run(&target, &detail, color, show_emoticons).await
+            danmaku::run(&target, &detail, cookie.as_deref(), color, show_emoticons).await
         }
     }
 }
@@ -406,7 +420,11 @@ async fn search(
         println!(
             "{}\t{}\t{}\t{}",
             anchor.room_id,
-            if anchor.live_status { "live" } else { "offline" },
+            if anchor.live_status {
+                "live"
+            } else {
+                "offline"
+            },
             anchor.user_name.replace(['\t', '\r', '\n'], " "),
             anchor.avatar
         );
@@ -561,13 +579,16 @@ fn build_site(platform: Platform, cookie_file: Option<&str>) -> Result<Box<dyn L
     let Some(path) = cookie_file else {
         return Ok(site);
     };
-    if platform != Platform::Douyin {
-        return Err("`--cookie-file` 目前只支持抖音".to_string());
+    if !matches!(
+        platform,
+        Platform::Douyin | Platform::Kuaishou | Platform::Weibo | Platform::YouTube
+    ) {
+        return Err("`--cookie-file` 目前支持抖音/快手/微博/YouTube".to_string());
     }
     let cookie = std::fs::read_to_string(path)
         .map_err(|e| format!("读取 Cookie 文件失败「{path}」：{e}"))?;
     let attrs = serde_json::json!({ "cookie": cookie.trim() }).to_string();
     site.set_site_attrs(&attrs)
-        .map_err(|e| format!("注入抖音 Cookie 失败：{e}"))?;
+        .map_err(|e| format!("注入 {} Cookie 失败：{e}", platform.name()))?;
     Ok(site)
 }

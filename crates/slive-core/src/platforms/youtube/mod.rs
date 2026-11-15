@@ -6,6 +6,7 @@
 //! - 分页：continuation token
 
 pub mod api;
+pub mod danmaku;
 pub mod play;
 pub mod site;
 

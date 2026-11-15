@@ -8,7 +8,7 @@ use async_trait::async_trait;
 use std::sync::{Arc, Mutex};
 
 use crate::error::SliveError;
-use crate::http::{HttpRequest, HttpTransport, HttpTransportExt, ReqwestTransport};
+use crate::http::{HttpRequest, HttpTransport, ReqwestTransport};
 use crate::models::*;
 use crate::time::{SystemClock, TimeSource};
 
@@ -26,6 +26,8 @@ pub struct KuaishouSite {
     session: Mutex<Option<String>>,
     /// 搜索用的 `lssid`（进程内稳定）。
     lssid: String,
+    /// 用户注入的 Cookie（优先于匿名会话）。
+    user_cookie: Mutex<String>,
 }
 
 impl Default for KuaishouSite {
@@ -46,6 +48,7 @@ impl KuaishouSite {
             time,
             session: Mutex::new(None),
             lssid,
+            user_cookie: Mutex::new(String::new()),
         }
     }
 
@@ -57,8 +60,24 @@ impl KuaishouSite {
         self.time.unix_secs()
     }
 
+    fn user_cookie(&self) -> Option<String> {
+        let cookie = self
+            .user_cookie
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone();
+        if cookie.is_empty() {
+            None
+        } else {
+            Some(cookie)
+        }
+    }
+
     fn session_cookie(&self) -> Option<String> {
-        self.session.lock().unwrap_or_else(|e| e.into_inner()).clone()
+        self.session
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
     }
 
     fn set_session_cookie(&self, cookie: String) {
@@ -92,13 +111,13 @@ impl KuaishouSite {
     async fn get_page(&self, url: &str, capture_cookie: bool) -> Result<String, SliveError> {
         let mut headers = vec![
             ("user-agent".to_string(), WEB_USER_AGENT.to_string()),
-            ("accept".to_string(), "text/html,application/xhtml+xml".to_string()),
             (
-                "accept-language".to_string(),
-                "zh-CN,zh;q=0.9".to_string(),
+                "accept".to_string(),
+                "text/html,application/xhtml+xml".to_string(),
             ),
+            ("accept-language".to_string(), "zh-CN,zh;q=0.9".to_string()),
         ];
-        if let Some(cookie) = self.session_cookie() {
+        if let Some(cookie) = self.user_cookie().or_else(|| self.session_cookie()) {
             headers.push(("cookie".to_string(), cookie));
         }
         let reply = self
@@ -124,6 +143,35 @@ impl KuaishouSite {
         }
         Ok(reply.text)
     }
+
+    /// GET `/live_api/*` JSON：与页面请求共用同一份 Cookie（用户注入优先）。
+    async fn get_api_json(&self, url: &str) -> Result<serde_json::Value, SliveError> {
+        let mut headers = vec![
+            (
+                "user-agent".to_string(),
+                crate::http::DEFAULT_USER_AGENT.to_string(),
+            ),
+            (
+                "accept-language".to_string(),
+                "zh-CN,zh;q=0.9,en;q=0.8".to_string(),
+            ),
+            (
+                "referer".to_string(),
+                "https://live.kuaishou.com/".to_string(),
+            ),
+        ];
+        if let Some(cookie) = self.user_cookie().or_else(|| self.session_cookie()) {
+            headers.push(("cookie".to_string(), cookie));
+        }
+        self.http
+            .get(&HttpRequest {
+                url: url.to_string(),
+                query: Vec::new(),
+                headers,
+            })
+            .await?
+            .json()
+    }
 }
 
 #[async_trait]
@@ -136,8 +184,12 @@ impl crate::platforms::live_site::LiveSite for KuaishouSite {
         "快手".to_string()
     }
 
-    fn set_site_attrs(&self, _data: &str) -> Result<(), SliveError> {
-        Err(SliveError::invalid_input("快手不支持注入凭证"))
+    fn set_site_attrs(&self, data: &str) -> Result<(), SliveError> {
+        let Some(cookie) = super::super::credential::parse_cookie(data)? else {
+            return Ok(());
+        };
+        *self.user_cookie.lock().unwrap_or_else(|e| e.into_inner()) = cookie;
+        Ok(())
     }
 
     async fn get_categories(&self) -> Result<Vec<LiveCategory>, SliveError> {
@@ -148,8 +200,7 @@ impl crate::platforms::live_site::LiveSite for KuaishouSite {
             let mut seen = std::collections::HashSet::new();
             for page in 1..=50 {
                 let json = self
-                    .http
-                    .get_json(&api::area_list(&category.id, page))
+                    .get_api_json(&api::area_list(&category.id, page))
                     .await?;
                 let (areas, has_more) = api::parse_areas(&json, &category.id, &category.name)?;
                 let mut added = false;
@@ -190,8 +241,7 @@ impl crate::platforms::live_site::LiveSite for KuaishouSite {
         let mut has_more = false;
         for current in 1..=target {
             let json = self
-                .http
-                .get_json(&api::area_rooms(area_id, current, &cursor))
+                .get_api_json(&api::area_rooms(area_id, current, &cursor))
                 .await?;
             let (cards, more, next) = api::parse_area_rooms(&json)?;
             has_more = more;
@@ -220,7 +270,7 @@ impl crate::platforms::live_site::LiveSite for KuaishouSite {
         _page: i32,
         page_size: Option<i32>,
     ) -> Result<LiveCategoryResult, SliveError> {
-        let json = self.http.get_json(&api::home_list()).await?;
+        let json = self.get_api_json(&api::home_list()).await?;
         let mut items: Vec<LiveRoomItem> = api::parse_home_list(&json)?
             .iter()
             .filter(|card| !card.author.id.is_empty())
@@ -240,8 +290,7 @@ impl crate::platforms::live_site::LiveSite for KuaishouSite {
         page: i32,
     ) -> Result<LiveSearchRoomResult, SliveError> {
         let json = self
-            .http
-            .get_json(&api::search_author(&keyword, page.max(1), &self.lssid))
+            .get_api_json(&api::search_author(&keyword, page.max(1), &self.lssid))
             .await?;
         let items: Vec<LiveRoomItem> = api::parse_search_authors(&json)?
             .iter()
@@ -259,8 +308,7 @@ impl crate::platforms::live_site::LiveSite for KuaishouSite {
         page: i32,
     ) -> Result<LiveSearchAnchorResult, SliveError> {
         let json = self
-            .http
-            .get_json(&api::search_author(&keyword, page.max(1), &self.lssid))
+            .get_api_json(&api::search_author(&keyword, page.max(1), &self.lssid))
             .await?;
         let items: Vec<LiveAnchorItem> = api::parse_search_authors(&json)?
             .iter()
@@ -294,12 +342,11 @@ impl crate::platforms::live_site::LiveSite for KuaishouSite {
         }
         let html = self.fetch_room_html(&detail.room_id).await?;
         let state = super::detail::extract_initial_state(&html)?;
-        let play_urls = super::detail::extract_play_urls(&state).ok_or_else(|| {
-            SliveError::Api {
+        let play_urls =
+            super::detail::extract_play_urls(&state).ok_or_else(|| SliveError::Api {
                 code: -1,
                 message: "房间页没有 playUrls".to_string(),
-            }
-        })?;
+            })?;
         super::play::parse_qualities(&play_urls, true)
     }
 

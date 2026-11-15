@@ -18,6 +18,7 @@ use crate::url::{Platform, Target};
 pub async fn run(
     target: &Target,
     detail: &LiveRoomDetail,
+    cookie: Option<&str>,
     color: bool,
     show_emoticons: bool,
 ) -> Result<(), String> {
@@ -51,9 +52,17 @@ pub async fn run(
             let on_item = move |item: LiveDanmuItem| print_item(&item, color, show_emoticons);
             run_twitch(detail, stop_rx, on_item).await
         }
-        Platform::Kuaishou | Platform::Acfun | Platform::Weibo | Platform::Xiaohongshu | Platform::YouTube => {
-            Err("该平台弹幕暂未实现".to_string())
+        Platform::Acfun => {
+            let on_item = move |item: LiveDanmuItem| print_item(&item, color, show_emoticons);
+            run_acfun(detail, stop_rx, on_item).await
         }
+        Platform::YouTube => {
+            let on_item = move |item: LiveDanmuItem| print_item(&item, color, show_emoticons);
+            run_youtube(detail, cookie, stop_rx, on_item).await
+        }
+        Platform::Kuaishou => Err("快手弹幕票据接口需要人机验证，匿名会话不可用".to_string()),
+        Platform::Weibo => Err("微博弹幕需要登录 Cookie，CLI 未接入".to_string()),
+        Platform::Xiaohongshu => Err("小红书弹幕需要浏览器访客会话，CLI 未接入".to_string()),
     }
 }
 
@@ -212,6 +221,62 @@ fn danmaku_json<'a>(detail: &'a LiveRoomDetail, platform: &str) -> Result<&'a st
         .danmaku_data
         .as_deref()
         .ok_or_else(|| format!("{platform}未下发弹幕参数（房间可能未开播）"))
+}
+
+async fn run_acfun(
+    detail: &LiveRoomDetail,
+    stop_rx: watch::Receiver<bool>,
+    on_item: impl FnMut(LiveDanmuItem) + Send,
+) -> Result<(), String> {
+    use slive_core::platforms::acfun::AcfunSite;
+    use slive_core::platforms::ztlive::session::{run_session, WS_URL};
+
+    let site = AcfunSite::new();
+    let args = site
+        .danmaku_args(&detail.room_id)
+        .await
+        .map_err(|e| e.to_string())?;
+    let headers = vec![
+        (
+            "user-agent".to_string(),
+            slive_core::http::DEFAULT_USER_AGENT.to_string(),
+        ),
+        ("origin".to_string(), "https://live.acfun.cn".to_string()),
+    ];
+    let connect = slive_host::ws::binary_factory(WS_URL.to_string(), headers);
+    run_session(args, connect, SessionTuning::bilibili(), stop_rx, on_item).await;
+    Ok(())
+}
+
+async fn run_youtube(
+    detail: &LiveRoomDetail,
+    cookie: Option<&str>,
+    stop_rx: watch::Receiver<bool>,
+    on_item: impl FnMut(LiveDanmuItem) + Send,
+) -> Result<(), String> {
+    use slive_core::http::ReqwestTransport;
+    use slive_core::platforms::youtube::api;
+    use slive_core::platforms::youtube::danmaku::session::run_session;
+    use slive_core::platforms::youtube::danmaku::YouTubeDanmakuArgs;
+
+    let raw = match detail
+        .danmaku_data
+        .as_deref()
+        .map(str::trim)
+        .filter(|text| !text.is_empty())
+    {
+        Some(video_id) => video_id,
+        // room_id 是频道 id（UC…）：仅当它本身就是视频 id 时才可兜底。
+        None if api::is_video_id(&detail.room_id) => detail.room_id.as_str(),
+        None => return Err("YouTube 未下发弹幕参数（房间可能未开播）".to_string()),
+    };
+    let args = YouTubeDanmakuArgs::parse(raw)
+        .map_err(|e| e.to_string())?
+        .with_cookie(cookie);
+    let http: std::sync::Arc<dyn slive_core::http::HttpTransport> =
+        std::sync::Arc::new(ReqwestTransport::new());
+    run_session(args, http, SessionTuning::bilibili(), stop_rx, on_item).await;
+    Ok(())
 }
 
 fn print_item(item: &LiveDanmuItem, color: bool, show_emoticons: bool) {

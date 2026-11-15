@@ -4,6 +4,15 @@
 - Flutter Rust Bridge 构建插件更名为 `rust_lib_livecore`。
 - 新增可供外部仓库调用的 C ABI GitHub Actions workflow，覆盖 Linux、macOS 与 Windows，
   并在版本 tag 上自动附加 C、C++、C# 所需求的头文件和原生库。
+- 新增 AcFun 弹幕：link IM（`platforms/ztlive`，AES-CBC 载荷、注册 / 进房 / 心跳 /
+  保活 / 推送确认、断线重连）。
+- 新增 YouTube 弹幕：InnerTube `live_chat/get_live_chat` HTTP 轮询，支持聊天与
+  Super Chat。
+- `LiveSite.set_site_attrs` 的 Cookie 注入扩展到快手 / 微博 / YouTube（共享
+  `credential` 解析，接受原始 Cookie 串或 `{"cookie":"..."}`）；CLI `--cookie-file`
+  同步放开。
+- CLI `danmaku` 支持 AcFun / YouTube；快手、微博、小红书 按平台限制
+  返回明确原因。
 
 ## 1.1.0
 

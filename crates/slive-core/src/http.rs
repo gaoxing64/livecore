@@ -129,10 +129,28 @@ pub struct ReqwestTransport {
 
 /// 构造共享 `reqwest::Client`。
 pub fn build_client() -> reqwest::Client {
+    build_client_with_pool_limit(None)
+}
+
+/// 构造**不复用空闲连接**的 Client（每个请求重新握手）。
+///
+/// Twitch 边缘对 rustls 客户端有连接级策略：同一 keep-alive 连接上的后续
+/// 请求会被对端直接断开（`peer closed connection without sending TLS
+/// close_notify`），分类链路的第二个 GQL 批量请求因此经常整条失败。
+/// 禁用空闲连接复用后每次请求都走新握手，实测稳定（curl 的连接复用正常，
+/// 说明这不是 Twitch 的通用策略，而是针对该 TLS 指纹连接的行为）。
+pub fn build_client_no_pooling() -> reqwest::Client {
+    build_client_with_pool_limit(Some(0))
+}
+
+fn build_client_with_pool_limit(max_idle_per_host: Option<usize>) -> reqwest::Client {
     let mut builder = reqwest::Client::builder()
         .http1_only()
         .connect_timeout(CONNECT_TIMEOUT)
         .timeout(REQUEST_TIMEOUT);
+    if let Some(limit) = max_idle_per_host {
+        builder = builder.pool_max_idle_per_host(limit);
+    }
     match std::env::var("SLIVE_PROXY_URL") {
         Ok(raw) if !raw.trim().is_empty() => match reqwest::Proxy::all(raw.trim()) {
             Ok(proxy) => builder = builder.proxy(proxy),

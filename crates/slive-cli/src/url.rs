@@ -284,7 +284,11 @@ mod tests {
                 Platform::Xiaohongshu,
                 "570541076495019830",
             ),
-            ("https://youtu.be/dQw4w9WgXcQ", Platform::YouTube, "dQw4w9WgXcQ"),
+            (
+                "https://youtu.be/dQw4w9WgXcQ",
+                Platform::YouTube,
+                "dQw4w9WgXcQ",
+            ),
         ];
         for (url, platform, room) in cases {
             let t = parse(url).unwrap();
